@@ -4,3 +4,7 @@
 *.pyc
 *.mat
 *.m
+*.pdf
+*.gv
+*.cfg
+.venv
