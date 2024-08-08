@@ -1,5 +1,11 @@
 import os
 import pandas as pd
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+import numpy as np 
+from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
+from scipy.spatial.distance import squareform
+import seaborn as sns
 
 def calculate_correlation_matrices(folder, folder_out):
     files=os.listdir(folder)
@@ -38,6 +44,44 @@ def pair_files(folder, folder_out):
                 df.to_csv(output_filename, sep='\t', index=False)
                 print(f'Saved: {output_filename}')
             
+def cluster_correlations(correlations):
+    plt.figure(figsize=(12,5))
+    dissimilarity = 1 - abs(correlations)
+    Z = linkage(squareform(dissimilarity), 'complete')
 
-def principal_component_analysis(train_data, test_data):
-    print("f")
+    dendrogram(Z, labels=correlations.columns, orientation='top', 
+            leaf_rotation=90);
+    plt.show()
+
+    threshold = 0.8
+    labels = fcluster(Z, threshold, criterion='distance')
+
+    # Keep the indices to sort labels
+    labels_order = np.argsort(labels)
+
+    # Build a new dataframe with the sorted columns
+    for idx, i in enumerate(correlations.columns[labels_order]):
+        if idx == 0:
+            clustered = pd.DataFrame(correlations[i])
+        else:
+            df_to_append = pd.DataFrame(correlations[i])
+            clustered = pd.concat([clustered, df_to_append], axis=1)
+
+
+    
+    correlations = clustered.corr()
+
+    return correlations
+
+
+
+def principal_component_analysis(X_train, X_test, components_nr):
+
+    pca_mri = PCA(n_components=components_nr)
+
+    train_pca = pca_mri.fit_transform(X_train)
+    test_pca = pca_mri.transform(X_test)
+
+    return pca_mri, train_pca, test_pca
+
+    
