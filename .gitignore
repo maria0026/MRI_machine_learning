@@ -8,3 +8,4 @@
 *.gv
 *.cfg
 .venv
+results.ipynb
