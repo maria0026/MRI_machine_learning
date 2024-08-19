@@ -6,6 +6,8 @@ import numpy as np
 from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
 from scipy.spatial.distance import squareform
 import seaborn as sns
+from sklearn.manifold import TSNE
+
 
 def calculate_correlation_matrices(folder, folder_out):
     files=os.listdir(folder)
@@ -56,6 +58,21 @@ def cluster_correlations(correlations):
     threshold = 0.8
     labels = fcluster(Z, threshold, criterion='distance')
 
+    # Mapowanie etykiet do kolumn
+    label_to_columns = {}
+    for label, column in zip(labels, correlations.columns):
+        if label not in label_to_columns:
+            label_to_columns[label] = [column]
+        else:
+            label_to_columns[label].append(column)
+
+    # Redukcja cech - wybór jednej cechy z każdej grupy
+    selected_features = []
+    for label, columns in label_to_columns.items():
+        # Możesz wybrać np. pierwszą cechę lub cechę z najmniejszą wariancją
+        selected_features.append(columns[0])
+
+
     # Keep the indices to sort labels
     labels_order = np.argsort(labels)
 
@@ -71,17 +88,28 @@ def cluster_correlations(correlations):
     
     correlations = clustered.corr()
 
-    return correlations
+
+    return correlations, selected_features
 
 
 
 def principal_component_analysis(X_train, X_test, components_nr):
 
-    pca_mri = PCA(n_components=components_nr)
+    pca_mri = PCA(components_nr)
 
     train_pca = pca_mri.fit_transform(X_train)
     test_pca = pca_mri.transform(X_test)
 
-    return pca_mri, train_pca, test_pca
+    #chyba jak cechy przykładają się do komponentów
+    component_loadings = pca_mri.components_
 
-    
+    return pca_mri, train_pca, test_pca, component_loadings
+
+def stochastic_neighbor_embedding(X_train, X_test, components_nr):
+    tsne = TSNE(n_components=2, random_state=42)
+    train_tsne = tsne.fit_transform(X_train)
+    #test_tsne=tsne.transform(X_test)
+    test_tsne=X_test
+    tsne.kl_divergence_
+
+    return tsne, train_tsne, test_tsne
