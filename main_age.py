@@ -29,7 +29,7 @@ X_test=pd.concat([X_test_stantarized, X_test[column_to_copy]], axis=1)
 #PCA
 components_nr=40
 
-pca_mri, train_pca, test_pca, component_loadings=dimensions_reduction.principal_component_analysis(X_train, X_test, components_nr)
+pca_mri, train_pca, test_pca, importance_df=dimensions_reduction.principal_component_analysis(X_train, X_test, components_nr)
 explained_variance_ratio=pca_mri.explained_variance_ratio_
 formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
 print('Explained variability per principal component: {}'.format(formatted_explained_variance))
@@ -88,7 +88,21 @@ feature='age'
 print("Odchylenie",np.std(y_train[feature]))
 print("Srednia", np.mean(y_train[feature]))
 rf=train.random_forrest_regression_model(X_train, y_train, feature)
-mse, rmse= test.random_forest_regression_model(X_test, y_test, feature, rf)
+best_rf = rf.best_estimator_
+feature_importances = pd.Series(best_rf.feature_importances_, index=X_train.columns).sort_values(ascending=False)
+feature_importances=feature_importances.drop('male')
+feature_importances.index = feature_importances.index.astype(int)
+print(feature_importances)
+#sort ascending by indexes
+feature_importances=feature_importances.sort_index()
+print(feature_importances.index)
+print("wart", feature_importances.values)
+importance_df['component_importance_on_tree']=feature_importances.values
+#save to csv
+importance_df.to_csv('importance_age.csv', sep='\t', index=True)
+
+mse, rmse, mae= test.random_forest_regression_model(X_test, y_test, feature, rf)
 print("Mean squared error", mse)
 print("Root mean squared error", rmse)
+print("Mean absolute error", mae)
 
