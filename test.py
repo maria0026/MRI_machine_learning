@@ -2,7 +2,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, r
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 import pandas as pd
 
 def random_forest_model(X_test, y_test, feature, rf):
@@ -50,4 +50,25 @@ def random_forest_regression_model(X_test, y_test, feature, rf):
     mse=mean_squared_error(y_test[feature], y_pred)
     rmse = float(format(np.sqrt(mean_squared_error(y_test[feature], y_pred)), '.3f'))
 
-    return mse, rmse
+    #mean average error
+    mae = mean_absolute_error(y_test[feature], y_pred)
+
+    return mse, rmse, mae
+
+def svm_classification_model(X_test, y_test, clf):
+
+    #Predict the response for test dataset
+    y_pred = clf.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+
+    # Create the confusion matrix
+    cm = confusion_matrix(y_test, y_pred)
+
+    #roc curve
+    y_pred_proba = clf.predict_proba(X_test)[:, 1]
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba) 
+    
+
+    return accuracy, precision, recall, cm, fpr, tpr
