@@ -3,6 +3,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, ConfusionMatrixDisplay
 from sklearn.model_selection import RandomizedSearchCV, train_test_split
+from sklearn import svm
 
 
 def random_forest_model(X_train, y_train, feature):
@@ -47,3 +48,20 @@ def random_forrest_regression_model(X_train, y_train, feature):
     rand_search.fit(X_train, y_train[feature])
 
     return rand_search
+
+def svm_classification_model(X_train, y_train):
+
+    #Create a svm Classifier
+    clf = svm.SVC(probability=True)
+
+    param_grid = {'C': [0.1, 1, 10, 100, 1000],  
+              'gamma': [1, 0.1, 0.01, 0.001, 0.0001], 
+              'kernel': ['rbf']}  
+  
+    grid = RandomizedSearchCV(clf, param_distributions= param_grid, n_iter=10, cv=5) 
+    #Train the model using the training sets
+    clf.fit(X_train, y_train)
+
+    return clf
+
+
