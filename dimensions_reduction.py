@@ -11,6 +11,7 @@ from sklearn.manifold import TSNE
 
 def calculate_correlation_matrices(folder, folder_out):
     files=os.listdir(folder)
+    print(files)
     for file in files:
         if not 'all' in file and not 'Subjects' in file:
             path=os.path.join(folder, file)
@@ -48,6 +49,11 @@ def pair_files(folder, folder_out):
             
 def cluster_correlations(correlations):
     plt.figure(figsize=(12,5))
+
+    correlations = correlations.fillna(0)
+    np.fill_diagonal(correlations.values, 1)
+
+
     dissimilarity = 1 - abs(correlations)
     Z = linkage(squareform(dissimilarity), 'complete')
 
@@ -100,10 +106,24 @@ def principal_component_analysis(X_train, X_test, components_nr):
     train_pca = pca_mri.fit_transform(X_train)
     test_pca = pca_mri.transform(X_test)
 
-    #chyba jak cechy przykładają się do komponentów
+    #mówi jak cechy przykładają się do komponentów
     component_loadings = pca_mri.components_
+    n_pcs= component_loadings.shape[0]
 
-    return pca_mri, train_pca, test_pca, component_loadings
+    # get the index of the most important feature on EACH component
+    most_important = [np.abs(component_loadings[i]).argmax() for i in range(n_pcs)]
+
+    initial_feature_names = X_train.columns
+    # get the names
+    most_important_names = [initial_feature_names[most_important[i]] for i in range(n_pcs)]
+
+    # LIST COMPREHENSION HERE AGAIN
+    dic = {i+1: most_important_names[i] for i in range(n_pcs)}
+
+    # build the dataframe
+    importance_df = pd.DataFrame(dic.values(), index=dic.keys())
+
+    return pca_mri, train_pca, test_pca, importance_df
 
 def stochastic_neighbor_embedding(X_train, X_test, components_nr):
     tsne = TSNE(n_components=2, random_state=42)
