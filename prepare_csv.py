@@ -121,7 +121,7 @@ def convert_line_endings(folder):
 
 
 
-def get_indexes_for_cleaning_dataset(folder, filename, data_files=True):
+def get_indexes_for_cleaning_dataset(folder, filename, data_files=True, norm_confirmed=1):
 
     filename= os.path.join(folder, filename)
     df = pd.read_csv(filename, sep='\t')
@@ -139,12 +139,12 @@ def get_indexes_for_cleaning_dataset(folder, filename, data_files=True):
     if data_files==False:
 
         #indexy zawierające 0 w kolumunie norm_confirmed
-        zero_norm_confirmed = df[df['norm_confirmed']==0]
+        zero_norm_confirmed = df[df['norm_confirmed']==1-norm_confirmed]
         zero_norm_confirmed_indexes = zero_norm_confirmed.index.tolist()
 
         #dostjemy indexy duplikatów poza pierwszym wystąpieniem
         # Filtrujemy wiersze, gdzie 'norm_confirmed' = 1
-        filtered_df = df[df['norm_confirmed'] == 1]
+        filtered_df = df[df['norm_confirmed'] == norm_confirmed]
         
         duplicates = filtered_df[filtered_df.duplicated(subset='identifier', keep='first')]
         duplicates_indexes = duplicates.index.tolist()
