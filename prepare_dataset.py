@@ -17,7 +17,6 @@ def detele_unnormal_columns(folder, folder_out, df_outliers):
         df=df.drop(columns=columns_to_drop)
         df=df.dropna(axis=1, how='all')
         df.to_csv(f'{folder_out}/{file}', sep='\t', index=False)
-    return df
 
     
 def split_dataset(df, label_names):
