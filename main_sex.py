@@ -10,7 +10,11 @@ import plots
 import train
 import test
 from sklearn.metrics import roc_curve, auc
-
+import torch
+import numpy as np
+from torch.utils.data import Dataset, DataLoader
+from torch import nn
+from torch import optim
 
 n_crosval=5
 tprs=[]
@@ -24,16 +28,25 @@ label_names=['male']
 
 df=pd.read_csv('data_4/normal/all_concatenated.csv', sep='\t')
 df=df.drop(columns=['identifier', 'norm_confirmed', 'sex', 'female'])
+
+df_test=pd.read_csv('data_4/test_data_normal/all_concatenated.csv', sep='\t')
+df_test=df_test.drop(columns=['identifier', 'norm_confirmed', 'sex', 'female'])
+
+#df=pd.read_csv('data_4/all/all_concatenated.csv', sep='\t')
+#df=df.drop(columns=['identifier', 'norm_confirmed', 'sex', 'female'])
+
 #drop columns containing norm and Std
-df=df.drop(columns=[col for col in df.columns if 'norm' in col or 'Std' in col])
+#df=df.drop(columns=[col for col in df.columns if 'norm' in col or 'Std' in col])
 
 for i in range(n_crosval):
     prepare_dataset.divide_by_total_volume(df)
     X_train, X_test, y_train, y_test=prepare_dataset.split_dataset(df, label_names)
+    X_test=df_test.drop(columns=label_names)
+    y_test=df_test[label_names]
     X_train, X_test=prepare_dataset.standarize_data(X_train, X_test)
 
     #PCA
-    components_nr=40
+    components_nr=35
     pca_mri, train_pca, test_pca, importance_df=dimensions_reduction.principal_component_analysis(X_train, X_test, components_nr)
     
     explained_variance_ratio=pca_mri.explained_variance_ratio_
@@ -60,16 +73,18 @@ for i in range(n_crosval):
     X_test=test_principal_Df 
     feature='male'
 
+    '''
+    #svm
     clf=train.svm_classification_model(X_train, y_train)
     accuracy, precision, recall, cm, fpr, tpr=test.svm_classification_model(X_test, y_test, clf)
+    '''
 
     '''
+    #random forest    
     rf=train.random_forest_model(X_train, y_train, feature)
     best_rf = rf.best_estimator_
     feature_importances = pd.Series(best_rf.feature_importances_, index=X_train.columns).sort_values(ascending=False)
 
-
-    
     feature_importances.index = feature_importances.index.astype(int)
     print(feature_importances)
     #sort ascending by indexes
@@ -88,7 +103,27 @@ for i in range(n_crosval):
 
     accuracy, precision, recall, cm, fpr, tpr=test.random_forest_model(X_test, y_test, feature, rf)
     '''
+    
 
+    
+    #neural network
+    input_dim = components_nr
+    hidden_dim = 10
+    output_dim = 1
+    learning_rate = 0.075
+    loss_fn = nn.BCELoss()
+    num_epochs = 100
+    model=train.neural_network_classification(X_train, y_train, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs)
+    accuracy, precision, recall, FPR, cm, fpr, tpr, df_fi=test.neural_network_classification(X_test, y_test, model)
+    if i==0:
+        df_fi=pd.concat([df_fi.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
+        df_fi.to_csv('importance_sex_nn.csv', sep='\t', index=False)
+    else:
+        #concatenate
+        importance_df_old=pd.read_csv('importance_sex_nn.csv', sep='\t', index_col=0)
+        importance_df=pd.concat([importance_df_old.reset_index(drop=True), importance_df.reset_index(drop=True), df_fi.reset_index(drop=True)], axis=1)
+        importance_df.to_csv('importance_sex_nn.csv', sep='\t', index=False)
+    
     accuracies.append(accuracy)
     precisions.append(precision)
     recalls.append(recall)
