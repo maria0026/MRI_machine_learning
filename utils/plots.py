@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import pandas as pd
-# Tree Visualisation
+
 from sklearn.tree import export_graphviz
 from IPython.display import Image
 import graphviz
@@ -12,7 +12,7 @@ import plotly.express as px
 import plotly.io as pio
 
 def plot_some_data(df):
-    #test normalnosci- bez kolumn typu płec 
+    
     columns_to_drop=['identifier', 'norm_confirmed', 'sex', 'male', 'female']
     #anomalies_detection.test_normality(filename, columns_to_drop)
     df=df.drop(columns=columns_to_drop)
@@ -43,7 +43,7 @@ def pca(pca_mri, train_pca, test_pca, X_train, y_train, X_test, y_test):
              , columns = [str(i) for i in range(1,test_pca.shape[1]+1)], index=X_test.index)
     
 
-    y_train['age_label']=y_train['age'].apply(lambda x: 1 if x>30 else 0)
+    #y_train['age_label']=y_train['age'].apply(lambda x: 1 if x>30 else 0)
     targets = [1,0]
     colors = ['r', 'g']
 
@@ -225,4 +225,90 @@ def correlations_total_volume(df):
     ax.legend(title='Gender')
     plt.xticks(rotation=0)
     plt.tight_layout()
+    plt.show()
+
+def distribution(train_pca, test_pca): 
+
+    train_pca=pd.DataFrame(train_pca)
+    test_pca=pd.DataFrame(test_pca)
+    print(train_pca)
+    train_pca.columns = [str(i) for i in range(1,train_pca.shape[1]+1)]
+    test_pca.columns = [str(i) for i in range(1,test_pca.shape[1]+1)]
+    plt.figure(figsize=(10, 10))
+    for i, column in enumerate(test_pca.columns[:9]):
+        plt.subplot(3, 3, i+1)
+
+        # Ustalanie wspólnego zakresu dla osi x
+        min_value = min(train_pca[column].min(), test_pca[column].min())
+        max_value = max(train_pca[column].max(), test_pca[column].max())
+        bins = np.linspace(min_value, max_value, 30)
+        
+        plt.hist(test_pca[column], color='red', alpha=0.5, label='Test')
+        plt.hist(train_pca[column], color='green', alpha=0.5, label='Train')
+        plt.title(column)
+        plt.legend(loc='upper right')
+    plt.subplots_adjust(hspace=0.5) 
+    plt.show()
+
+def component_importance(importance_df, model):
+    importance_df=importance_df.sort_values(by='comp_imp')
+    #pick 3 the most important features
+    importance_df=importance_df.tail(3)
+# Tworzenie wykresu słupkowego
+    fig, ax = plt.subplots()
+    bars = ax.bar([1,2,3], importance_df['comp_imp'], color='green', alpha=0.5)
+    
+    # Dodawanie etykiet nad słupkami
+    for i, bar in enumerate(bars):
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width() / 2.0, height, f'{height:.2f}', ha='center', va='bottom')
+        component_nr=importance_df['component_names'].iloc[i]
+        ax.text(bar.get_x() + bar.get_width() / 2.0, 0, f'component nr {component_nr}', ha='center', va='bottom')
+        
+    
+    # Ustawienie tytułu
+    ax.set_title(f'Component Importance on {model}')
+    
+    # Zmiana etykiet osi X na numery
+    ax.set_xticks([])
+    #ax.set_xticks(range(len(importance_df['component_names'])))
+    #ax.set_xticklabels(range(1, len(importance_df['component_names']) + 1))
+    
+    plt.show()
+
+def age_prediction_function(df, model):
+    # Tworzenie figury z odpowiednim rozmiarem
+    fig, axs = plt.subplots(2, 3, figsize=(15, 7))
+    fig.suptitle(f'Actual vs Predicted Age by {model}', fontsize=16)
+    print(df.columns)
+    list_actual = [column for column in df.columns if 'Actual' in column]
+    list_predicted = [column for column in df.columns if 'Predicted' in column]
+
+    all_actual = np.array([])
+    all_predicted = np.array([])
+
+    for i in range(len(list_actual)):
+        ax = axs[i // 3, i % 3]  # Pobieranie odpowiedniego podwykresu (2x3 layout)
+        ax.plot(df[list_actual[i]], df[list_predicted[i]], 'o')
+        ax.set_xlabel('Actual Age', fontsize=12)
+        ax.set_ylabel('Predicted Age', fontsize=12)
+        ax.set_title(f'Training {i + 1}', fontsize=14)
+        ax.tick_params(axis='both', labelsize=10)
+
+
+        all_actual = np.append(all_actual, df[list_actual[i]].values)
+        all_predicted = np.append(all_predicted, df[list_predicted[i]].values)
+
+    all_actual=list(all_actual)
+    all_predicted=list(all_predicted)
+    # Tworzenie figury i osi
+    ax=axs[1,2]  
+    ax.plot(all_actual, all_predicted, 'o')
+
+    ax.set_xlabel('Actual Age')
+    ax.set_ylabel('Predicted Age')
+    ax.set_title(f'Actual vs Predicted Age by {model}')
+
+
+    fig.tight_layout()  
     plt.show()

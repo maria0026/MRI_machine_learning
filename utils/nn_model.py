@@ -21,3 +21,5 @@ class NeuralNetwork(nn.Module):
         x = torch.nn.functional.sigmoid(self.output_layer(x))
 
         return x
+
+

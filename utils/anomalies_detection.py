@@ -48,8 +48,8 @@ def test_normality(filename, columns_to_drop):
     df_mad = pd.DataFrame(mad_values)
 
     df_mad.insert(0, 'name', ['median', 'mad', 'outliers_number', 'p', 'p_after', 'wynik testu'])
-    df_mad.to_csv('outliers_values.csv', sep='\t', index=False)
-    df_outliers.to_csv('outliers.csv', sep='\t', index=True)
+    df_mad.to_csv('results/outliers_values.csv', sep='\t', index=False)
+    df_outliers.to_csv('results/outliers.csv', sep='\t', index=True)
 
     
  

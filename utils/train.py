@@ -10,8 +10,8 @@ from torch.utils.data import Dataset, DataLoader
 from torch import nn
 from torch import optim
 import matplotlib.pyplot as plt
-import nn_data
-import nn_model
+from utils import nn_data
+from utils import nn_model
 
 def random_forest_model(X_train, y_train, feature):
 
@@ -124,3 +124,4 @@ def neural_network_classification(X_train, y_train, input_dim, hidden_dim, outpu
     print("Training Complete")
 
     return model
+

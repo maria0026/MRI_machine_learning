@@ -7,10 +7,9 @@ import pandas as pd
 import torch
 import itertools
 from torch.utils.data import Dataset, DataLoader
-from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
-import nn_data
+from utils import nn_data
 from eli5.sklearn import PermutationImportance
 import eli5
 from sklearn.base import BaseEstimator, ClassifierMixin
@@ -55,7 +54,7 @@ def random_forest_regression_model(X_test, y_test, feature, rf):
         'Actual': y_test[feature].values,  # Convert to NumPy array if it's not already
         'Predicted': y_pred
     })
-    results_df.to_csv('results.csv')
+    #results_df.to_csv('results/regression_results_forest.csv', sep='\t')
     
     mse=mean_squared_error(y_test[feature], y_pred)
     rmse = float(format(np.sqrt(mean_squared_error(y_test[feature], y_pred)), '.3f'))
@@ -63,7 +62,7 @@ def random_forest_regression_model(X_test, y_test, feature, rf):
     #mean average error
     mae = mean_absolute_error(y_test[feature], y_pred)
 
-    return mse, rmse, mae
+    return mse, rmse, mae, results_df
 
 def svm_classification_model(X_test, y_test, clf):
 
@@ -102,12 +101,18 @@ def svm_regression_model(X_test, y_test, clf):
     #Predict the response for test dataset
     y_pred = clf.predict(X_test)
 
+    y_pred_flat = y_pred  # just use y_pred directly
+
+    # Ensure y_test is flat too, which it should already be
+    y_test_flat = y_test.values.ravel() 
+
     # Make sure y_test[feature] and y_pred are aligned
     results_df = pd.DataFrame({
-        'Actual': y_test.values.ravel(),  # Convert to NumPy array if it's not already
-        'Predicted': y_pred.ravel()
+        'Actual': y_test_flat,  # Convert to NumPy array if it's not already
+        'Predicted': y_pred_flat
     })
-    results_df.to_csv('results_svm.csv')
+    
+    #results_df.to_csv('results/regression_results_svm.csv', sep='\t')
     
     mse=mean_squared_error(y_test, y_pred)
     rmse = float(format(np.sqrt(mean_squared_error(y_test, y_pred)), '.3f'))
@@ -115,7 +120,7 @@ def svm_regression_model(X_test, y_test, clf):
     #mean average error
     mae = mean_absolute_error(y_test, y_pred)
 
-    return mse, rmse, mae
+    return mse, rmse, mae, results_df
 
 class SklearnPyTorchWrapper(BaseEstimator, ClassifierMixin):
     def __init__(self, model):
@@ -199,9 +204,9 @@ def neural_network_classification(X_test, y_test, model):
     sklearn_model = SklearnPyTorchWrapper(model)
 
     # Feature Importance with eli5
-    perm = PermutationImportance(sklearn_model, n_iter=5, random_state=42).fit(X_test, y_test_flat)
-    df_fi = pd.DataFrame(dict(feature_names=X_test.columns.tolist(),
-                          feat_imp=perm.feature_importances_, 
+    perm = PermutationImportance(sklearn_model, n_iter=5).fit(X_test, y_test_flat)
+    df_fi = pd.DataFrame(dict(component_names=X_test.columns.tolist(),
+                          comp_imp=perm.feature_importances_, 
                           std=perm.feature_importances_std_,
                             ))
     df_fi = df_fi.round(4)
@@ -209,7 +214,54 @@ def neural_network_classification(X_test, y_test, model):
     #save to csv
     #df_fi.to_csv('importance.csv', sep='\t', index=False)
 
-    weights=eli5.show_weights(perm, feature_names=[f'feature_{i}' for i in range(X_test.shape[1])])
+    weights=eli5.show_weights(perm, feature_names=[f'component_{i}' for i in range(X_test.shape[1])])
     #print(eli5.format_as_text(perm, feature_names=[f'feature_{i}' for i in range(X_test.shape[1])]))
 
     return accuracy, precision, recall, FPR, cf_matrix, fpr, tpr, df_fi
+
+def neural_network_regression(X_test, y_test, model):
+
+    batch_size = 64
+    test_data =nn_data.Data(X_test, y_test)
+    test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
+
+
+    y_pred = []
+    y_test = []
+    with torch.no_grad():
+        for X, y in test_dataloader:
+            outputs = model(X)
+
+            # Spłaszczenie wyjść modelu do jednowymiarowego wektora
+            predicted = outputs.view(-1).numpy()
+            # Konwersja y do płaskiej postaci
+            y = y.view(-1).numpy()
+            y_pred.append(predicted)
+            y_test.append(y)
+            
+    y_pred_flat = np.array([item for sublist in y_pred for item in sublist])*100
+    y_test_flat = np.array([item for sublist in y_test for item in sublist])*100
+    #create dataframe from y_pred and y_test
+    y_pred_df=pd.DataFrame({'Actual':np.array(y_test_flat),
+                           'Predicted':np.array(y_pred_flat)})
+    
+        
+    mse=mean_squared_error(y_test_flat, y_pred_flat)
+    rmse = float(format(np.sqrt(mean_squared_error(y_test_flat, y_pred_flat)), '.3f'))
+
+    #mean average error
+    mae = mean_absolute_error(y_test_flat, y_pred_flat)
+
+    #feature_importance
+    # Wrap the model with the scikit-learn wrapper
+    sklearn_model = SklearnPyTorchWrapper(model)
+
+    # Feature Importance with eli5
+    perm = PermutationImportance(sklearn_model, scoring='neg_mean_absolute_error', n_iter=5).fit(X_test, y_test_flat)
+    df_fi = pd.DataFrame(dict(component_names=X_test.columns.tolist(),
+                          comp_imp=perm.feature_importances_, 
+                          std=perm.feature_importances_std_,
+                            ))
+    df_fi = df_fi.round(4)
+
+    return mse, rmse, mae, y_pred_df, df_fi

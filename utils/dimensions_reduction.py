@@ -110,18 +110,36 @@ def principal_component_analysis(X_train, X_test, components_nr):
     component_loadings = pca_mri.components_
     n_pcs= component_loadings.shape[0]
 
-    # get the index of the most important feature on EACH component
+    #get the index of the most important feature on EACH component
     most_important = [np.abs(component_loadings[i]).argmax() for i in range(n_pcs)]
+    #get the secound most important feature
+    second_important = [np.abs(component_loadings[i]).argsort()[-2] for i in range(n_pcs)]
+    third_important = [np.abs(component_loadings[i]).argsort()[-3] for i in range(n_pcs)]
 
     initial_feature_names = X_train.columns
-    # get the names
+    #get the names
     most_important_names = [initial_feature_names[most_important[i]] for i in range(n_pcs)]
+    second_important_names = [initial_feature_names[second_important[i]] for i in range(n_pcs)]
+    third_important_names = [initial_feature_names[third_important[i]] for i in range(n_pcs)]
 
-    # LIST COMPREHENSION HERE AGAIN
+    #get the values
+    most_important_values = [component_loadings[i][most_important[i]] for i in range(n_pcs)]
+    second_important_values = [component_loadings[i][second_important[i]] for i in range(n_pcs)]
+    third_important_values = [component_loadings[i][third_important[i]] for i in range(n_pcs)]
+
     dic = {i+1: most_important_names[i] for i in range(n_pcs)}
+    dic_second = {i+1: second_important_names[i] for i in range(n_pcs)}
+    dic_third = {i+1: third_important_names[i] for i in range(n_pcs)}
 
-    # build the dataframe
-    importance_df = pd.DataFrame(dic.values(), index=dic.keys())
+    # Build the DataFrame with both most and second most important features
+    importance_df = pd.DataFrame({
+        'Most Important Feature Names': pd.Series(dic).values,
+        'Most Important Feature Values': pd.Series(most_important_values).values,
+        'Second Most Important Feature Names': pd.Series(dic_second).values,
+        'Second Most Important Feature Values': pd.Series(second_important_values).values,
+        'Third Most Important Feature Names': pd.Series(dic_third).values,
+        'Third Most Important Feature Values': pd.Series(third_important_values).values
+    }, index=dic.keys())
 
     return pca_mri, train_pca, test_pca, importance_df
 

@@ -1,9 +1,9 @@
-import prepare_csv
+from utils import prepare_csv
 
-path = 'data_4/original/Subjects.csv'
+path = 'data/original/Subjects.csv'
 prepare_csv.replace_comma_with_dot(path)
 
-folder='data_4/original'
+folder='data/original'
 old_deliminer = ','
 old_deliminer_2 = ';'
 deliminer = '\t'
@@ -49,7 +49,7 @@ print(indexes)
 #czyszczenie danych
 
 
-folder_out='data_4/cleaned_data'
+folder_out='data/cleaned_data'
 prepare_csv.clean_datasets(indexes, folder, folder_out)
 
 folder_name=folder_out
