@@ -13,6 +13,8 @@ from utils import nn_data
 from eli5.sklearn import PermutationImportance
 import eli5
 from sklearn.base import BaseEstimator, ClassifierMixin
+from torch.autograd import Variable
+
 
 def random_forest_model(X_test, y_test, feature, rf):
     
@@ -222,9 +224,8 @@ def neural_network_classification(X_test, y_test, model):
 def neural_network_regression(X_test, y_test, model):
 
     batch_size = 64
-    test_data =nn_data.Data(X_test, y_test)
+    test_data =nn_data.DataRNN(X_test, y_test)
     test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
-
 
     y_pred = []
     y_test = []
@@ -245,7 +246,7 @@ def neural_network_regression(X_test, y_test, model):
     y_pred_df=pd.DataFrame({'Actual':np.array(y_test_flat),
                            'Predicted':np.array(y_pred_flat)})
     
-        
+    
     mse=mean_squared_error(y_test_flat, y_pred_flat)
     rmse = float(format(np.sqrt(mean_squared_error(y_test_flat, y_pred_flat)), '.3f'))
 
@@ -265,3 +266,90 @@ def neural_network_regression(X_test, y_test, model):
     df_fi = df_fi.round(4)
 
     return mse, rmse, mae, y_pred_df, df_fi
+
+def recurrent_neural_network_classification(X_test, y_test, seq_dim, input_dim, model):
+    print("y_test", y_test)
+    batch_size = 64
+    test_data =nn_data.DataRNN(X_test, y_test)
+    test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
+    
+    y_pred = []
+    y_test = []
+    # Iterate through test dataset
+    for images, y in test_dataloader:
+        images = Variable(images.view(-1, seq_dim, input_dim))
+        
+        # Forward propagation
+        outputs = model(images)
+        
+        predicted = outputs.view(-1).detach().numpy()
+        # Konwersja y do płaskiej postaci
+        y_pred.append(predicted)
+        y=y.view(-1).numpy()
+        y_test.append(y)
+
+
+    y_pred_flat = list(itertools.chain(*y_pred))
+    y_test_flat = list(itertools.chain(*y_test))
+    
+    y_pred_flat = np.array(y_pred_flat).flatten()
+    y_test_flat = np.array(y_test_flat).flatten()
+    y_pred_binary = (y_pred_flat > 0.5).astype(int)
+    print("pred", y_pred_binary)
+    print("test", y_test_flat)
+    accuracy = accuracy_score(y_test_flat, y_pred_binary)
+    precision = precision_score(y_test_flat, y_pred_binary)
+    recall = recall_score(y_test_flat, y_pred_binary)
+
+    TP = np.sum((y_test_flat == 1) & (y_pred_flat > 0.5))
+    TN = np.sum((y_test_flat == 0) & (y_pred_flat <= 0.5))
+    FP = np.sum((y_test_flat == 0) & (y_pred_flat > 0.5))
+    FN = np.sum((y_test_flat == 1) & (y_pred_flat <= 0.5))
+
+
+    if FP + TN > 0:
+        FPR = FP / (FP + TN)
+    else:
+        FPR = 0 
+
+    #roc curve
+    fpr, tpr, thresholds = roc_curve(y_test_flat, y_pred_flat) 
+    cf_matrix = confusion_matrix(y_test_flat, y_pred_flat>0.5)
+
+
+    return accuracy, precision, recall, FPR, cf_matrix, fpr, tpr
+
+def recurrent_neural_network_regression(X_test, y_test, seq_dim, input_dim, model):
+    
+    batch_size = 64
+    test_data =nn_data.DataRNN(X_test, y_test)
+    test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
+    
+    y_pred = []
+    y_test = []
+    # Iterate through test dataset
+    for images, y in test_dataloader:
+        images = Variable(images.view(-1, seq_dim, input_dim))
+        
+        # Forward propagation
+        outputs = model(images)
+        
+        predicted = outputs.view(-1).detach().numpy()
+        # Konwersja y do płaskiej postaci
+        y = y.view(-1).numpy()
+        y_pred.append(predicted)
+        y_test.append(y)
+
+    y_pred_flat = np.array([item for sublist in y_pred for item in sublist])*100
+    y_test_flat = np.array([item for sublist in y_test for item in sublist])*100
+    #create dataframe from y_pred and y_test
+    y_pred_df=pd.DataFrame({'Actual':np.array(y_test_flat),
+                           'Predicted':np.array(y_pred_flat)})
+    
+
+    mse=mean_squared_error(y_test_flat, y_pred_flat)
+    rmse = float(format(np.sqrt(mean_squared_error(y_test_flat, y_pred_flat)), '.3f'))
+    mae = mean_absolute_error(y_test_flat, y_pred_flat)
+
+
+    return mse, rmse, mae, y_pred_df
