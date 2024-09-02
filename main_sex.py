@@ -14,7 +14,7 @@ from utils import plots
 from utils import train
 from utils import test
 
-
+model_name="forest"
 
 n_crosval=5
 tprs=[]
@@ -40,8 +40,8 @@ df_test=df_test.drop(columns=['identifier', 'norm_confirmed', 'sex', 'female'])
 #df=df.drop(columns=[col for col in df.columns if 'norm' in col or 'Std' in col])
 
 for i in range(n_crosval):
-    prepare_dataset.divide_by_total_volume(df)
-    prepare_dataset.divide_by_total_volume(df_test)
+    #prepare_dataset.divide_by_total_volume(df)
+    #prepare_dataset.divide_by_total_volume(df_test)
     X_train, X_test, y_train, y_test=prepare_dataset.split_dataset(df, label_names)
     #X_test=df_test.drop(columns=label_names)
     #y_test=df_test[label_names]
@@ -70,66 +70,72 @@ for i in range(n_crosval):
     test_principal_Df = pd.DataFrame(data = test_pca
                 , columns = [str(i) for i in range(1,test_pca.shape[1]+1)], index=X_test.index)
 
-    #train_principal_Df['age']=X_train['age']
-    #test_principal_Df['age']=X_test['age']
-
 
     X_train=train_principal_Df
     X_test=test_principal_Df 
     feature='male'
 
-    '''
-    #svm
-    clf=train.svm_classification_model(X_train, y_train)
-    accuracy, precision, recall, cm, fpr, tpr=test.svm_classification_model(X_test, y_test, clf)
-    '''
-
-    '''
-    #random forest    
-    rf=train.random_forest_model(X_train, y_train, feature)
-    best_rf = rf.best_estimator_
-    feature_importances = pd.Series(best_rf.feature_importances_, index=X_train.columns).sort_values(ascending=False)
-
-    feature_importances.index = feature_importances.index.astype(int)
-    print(feature_importances)
-    #sort ascending by indexes
-    feature_importances=feature_importances.sort_index()
-
-    importance_df['component_names']=feature_importances.index
-    importance_df['comp_imp']=feature_importances.values
-    
-
-    #save to csv
-    if i==0:
-        importance_df.to_csv(f'{results_directory}/importance_sex_tree.csv', sep='\t')
-    else:
-        #concatenate
-        importance_df_old=pd.read_csv(f'{results_directory}/importance_sex_tree.csv', sep='\t', index_col=0)
-        importance_df=pd.concat([importance_df_old, importance_df], axis=1)
-        importance_df.to_csv(f'{results_directory}/importance_sex_tree.csv', sep='\t', index=True)
-
-    accuracy, precision, recall, cm, fpr, tpr=test.random_forest_model(X_test, y_test, feature, rf)
-    '''
-    
-    
-    #neural network
     input_dim = components_nr
     hidden_dim = 10
     output_dim = 1
     learning_rate = 0.075
     loss_fn = nn.BCELoss()
     num_epochs = 100
-    model=train.neural_network_classification(X_train, y_train, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs)
-    accuracy, precision, recall, FPR, cm, fpr, tpr, df_fi=test.neural_network_classification(X_test, y_test, model)
+    seq_dim=1
+    layer_dim=1
 
-    if i==0:
-        df_fi=pd.concat([df_fi.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
-        df_fi.to_csv(f'{results_directory}/importance_sex_nn.csv', sep='\t', index=False)
-    else:
-        #concatenate
-        importance_df_old=pd.read_csv(f'{results_directory}/importance_sex_nn.csv', sep='\t')
-        importance_df=pd.concat([importance_df_old.reset_index(drop=True), df_fi.reset_index(drop=True), importance_df.reset_index(drop=True),], axis=1)
-        importance_df.to_csv(f'{results_directory}/importance_sex_nn.csv', sep='\t', index=False)
+    if model_name=="svm":
+    
+        clf=train.svm_classification_model(X_train, y_train)
+        accuracy, precision, recall, cm, fpr, tpr=test.svm_classification_model(X_test, y_test, clf)
+    
+
+    elif model_name=="forest":
+  
+        rf=train.random_forest_model(X_train, y_train, feature)
+        accuracy, precision, recall, cm, fpr, tpr=test.random_forest_model(X_test, y_test, feature, rf)
+        best_rf = rf.best_estimator_
+        feature_importances = pd.Series(best_rf.feature_importances_, index=X_train.columns).sort_values(ascending=False)
+
+        feature_importances.index = feature_importances.index.astype(int)
+        print(feature_importances)
+        #sort ascending by indexes
+        feature_importances=feature_importances.sort_index()
+
+        importance_df['component_names']=feature_importances.index
+        importance_df['comp_imp']=feature_importances.values
+
+        #save to csv
+        if i==0:
+            importance_df.to_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t')
+        else:
+            #concatenate
+            importance_df_old=pd.read_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t', index_col=0)
+            importance_df=pd.concat([importance_df_old, importance_df], axis=1)
+            importance_df.to_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t', index=True)
+        
+
+    elif model_name=="rnn":
+
+        model=train.recurrent_neural_network(X_train, y_train, X_test, y_test, seq_dim, input_dim, hidden_dim, layer_dim, output_dim, learning_rate, loss_fn, num_epochs)
+        accuracy, precision, recall, FPR, cm, fpr, tpr=test.recurrent_neural_network_classification(X_test, y_test, seq_dim, input_dim, model)
+
+
+    elif model_name=="nn":
+        model=train.layer_neural_network(X_train, y_train, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs)
+        accuracy, precision, recall, FPR, cm, fpr, tpr, df_fi=test.neural_network_classification(X_test, y_test, model)
+
+
+    if model_name=="nn":
+  
+        if i==0:
+            df_fi=pd.concat([df_fi.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
+            df_fi.to_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t', index=False)
+        else:
+            #concatenate
+            importance_df_old=pd.read_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t')
+            importance_df=pd.concat([importance_df_old.reset_index(drop=True), df_fi.reset_index(drop=True), importance_df.reset_index(drop=True),], axis=1)
+            importance_df.to_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t', index=False)
     
 
     accuracies.append(accuracy)
