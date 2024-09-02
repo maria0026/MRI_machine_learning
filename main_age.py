@@ -21,6 +21,15 @@ mses=[]
 rmses=[]
 maes=[]
 results_directory='results'
+hidden_dim = 20
+layer_dim = 1
+output_dim = 1
+seq_dim=1
+learning_rate = 0.075
+loss_fn = nn.MSELoss()
+num_epochs = 100
+
+model_name="forest"
 
 for i in range(n_crosval):
     prepare_dataset.divide_by_total_volume(df)
@@ -48,9 +57,6 @@ for i in range(n_crosval):
 
     column_to_copy='male'
     '''
-    train_principal_Df[column_to_copy]=X_train[column_to_copy]
-    test_principal_Df[column_to_copy]=X_test[column_to_copy]
-
 
     #2 osobne modele- dla mężczyzn i kobiet
 
@@ -82,7 +88,6 @@ for i in range(n_crosval):
     y_test=y_test_male
 
 
-
     X_train=X_train_female
     y_train=y_train_female
     X_test=X_test_female
@@ -93,89 +98,74 @@ for i in range(n_crosval):
     print("Odchylenie",np.std(y_train[feature]))
     print("Srednia", np.mean(y_train[feature]))
     
-    #svm
-    '''
-    clf=train.svm_regression_model(X_train, y_train)
-    mse, rmse, mae, results_df=test.svm_regression_model(X_test, y_test, clf)
-
-    #save to csv
-    if i==0:
-        #importance_df.to_csv(f'{results_directory}/importance_age_svm.csv', sep='\t')
-
-        results_df.to_csv(f'{results_directory}/regression_results_svm.csv', sep='\t')
-    else:
-
-        #importance_df_old=pd.read_csv(f'{results_directory}/importance_age_svm.csv', sep='\t', index_col=0)
-        #importance_df=pd.concat([importance_df_old, importance_df], axis=1)
-        #importance_df.to_csv(f'{results_directory}/importance_age_svm.csv', sep='\t', index=True)
-
-        results_df_old=pd.read_csv(f'{results_directory}/regression_results_svm.csv', sep='\t')
-        y_pred_df=pd.concat([results_df_old.reset_index(drop=True), results_df.reset_index(drop=True)], axis=1)
-        y_pred_df.to_csv(f'{results_directory}/regression_results_svm.csv', sep='\t', index=False)
-    '''
-
-    '''
-    rf=train.random_forrest_regression_model(X_train, y_train, feature)
-    best_rf = rf.best_estimator_
-    feature_importances = pd.Series(best_rf.feature_importances_, index=X_train.columns).sort_values(ascending=False)
-    #feature_importances=feature_importances.drop('male')
-    feature_importances.index = feature_importances.index.astype(int)
-    print(feature_importances)
-    #sort ascending by indexes
-    feature_importances=feature_importances.sort_index()
-    print(feature_importances.index)
-    print("wart", feature_importances.values)
-    importance_df['comp_imp']=feature_importances.values
-
-    mse, rmse, mae, results_df= test.random_forest_regression_model(X_test, y_test, feature, rf)
-
-        #save to csv
-    if i==0:
-        importance_df.to_csv(f'{results_directory}/importance_age_tree.csv', sep='\t')
-
-        results_df.to_csv(f'{results_directory}/regression_results_tree.csv', sep='\t')
-    else:
-        #concatenate
-        importance_df_old=pd.read_csv(f'{results_directory}/importance_age_tree.csv', sep='\t', index_col=0)
-        importance_df=pd.concat([importance_df_old, importance_df], axis=1)
-        importance_df.to_csv(f'{results_directory}/importance_age_tree.csv', sep='\t', index=True)
-
-        results_df_old=pd.read_csv(f'{results_directory}/regression_results_tree.csv', sep='\t')
-        y_pred_df=pd.concat([results_df_old.reset_index(drop=True), results_df.reset_index(drop=True)], axis=1)
-        y_pred_df.to_csv(f'{results_directory}/regression_results_tree.csv', sep='\t', index=False)
-    '''
-
-    #neural network
-    input_dim = components_nr
-    hidden_dim = 10
-    output_dim = 1
-    learning_rate = 0.075
-    loss_fn = nn.MSELoss()
-    num_epochs = 100
-
-    y_train=y_train/100
-    y_test=y_test/100
+    if model_name=="svm":
     
-    model=train.neural_network_classification(X_train, y_train, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs)
-    mse, rmse, mae, y_pred_df, df_fi=test.neural_network_regression(X_test, y_test, model)
+        clf=train.svm_regression_model(X_train, y_train)
+        mse, rmse, mae, results_df=test.svm_regression_model(X_test, y_test, clf)
+
+
+    elif model_name=='forest':
+
+        rf=train.random_forrest_regression_model(X_train, y_train, feature)
+        best_rf = rf.best_estimator_
+        feature_importances = pd.Series(best_rf.feature_importances_, index=X_train.columns).sort_values(ascending=False)
+        feature_importances.index = feature_importances.index.astype(int)
+        print(feature_importances)
+        #sort ascending by indexes
+        feature_importances=feature_importances.sort_index()
+        print(feature_importances.index)
+        print("wart", feature_importances.values)
+        importance_df['comp_imp']=feature_importances.values
+        mse, rmse, mae, results_df= test.random_forest_regression_model(X_test, y_test, feature, rf)
+
+        if i==0:
+            importance_df.to_csv(f'{results_directory}/importance_age_forest.csv', sep='\t')
+
+            results_df.to_csv(f'{results_directory}/regression_results_forest.csv', sep='\t')
+        else:
+            #concatenate
+            importance_df_old=pd.read_csv(f'{results_directory}/importance_age_forest.csv', sep='\t', index_col=0)
+            importance_df=pd.concat([importance_df_old, importance_df], axis=1)
+            importance_df.to_csv(f'{results_directory}/importance_age_forest.csv', sep='\t', index=True)
+
+            results_df_old=pd.read_csv(f'{results_directory}/regression_results_forest.csv', sep='\t')
+            results_df=pd.concat([results_df_old.reset_index(drop=True), results_df.reset_index(drop=True)], axis=1)
+            results_df.to_csv(f'{results_directory}/regression_results_forest.csv', sep='\t', index=False)
+        
+    elif model_name=='nn':
+
+        input_dim = components_nr
+        y_train=y_train/100
+        y_test=y_test/100
+        model=train.layer_neural_network(X_train, y_train, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs)
+        mse, rmse, mae, results_df, df_fi=test.neural_network_regression(X_test, y_test, model)
+ 
+    elif model_name=='rnn':
+
+        input_dim = components_nr
+        y_train=y_train/100
+        y_test=y_test/100
+        model=train.recurrent_neural_network(X_train, y_train, X_test, y_test, seq_dim, input_dim, hidden_dim, layer_dim, output_dim, learning_rate, loss_fn, num_epochs)
+        mse, rmse, mae, results_df=test.recurrent_neural_network_regression(X_test, y_test, seq_dim, input_dim, model)
     
 
-    
-    if i==0:
-        df_fi=pd.concat([df_fi.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
-        df_fi.to_csv(f'{results_directory}/importance_age_nn.csv', sep='\t', index=False)
+    if model_name!='forest':
+        if i==0:
+            if model_name=='nn':
+                df_fi=pd.concat([df_fi.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
+                df_fi.to_csv(f'{results_directory}/importance_age_{model_name}.csv', sep='\t', index=False)
 
-        y_pred_df.to_csv(f'{results_directory}/regression_results_nn.csv', sep='\t', index=False)
-    else:
-        #concatenate
-        importance_df_old=pd.read_csv(f'{results_directory}/importance_age_nn.csv', sep='\t')
-        importance_df=pd.concat([importance_df_old.reset_index(drop=True), df_fi.reset_index(drop=True), importance_df.reset_index(drop=True),], axis=1)
-        importance_df.to_csv(f'{results_directory}/importance_age_nn.csv', sep='\t', index=False)
-
-        y_pred_df_old=pd.read_csv(f'{results_directory}/regression_results_nn.csv', sep='\t')
-        y_pred_df=pd.concat([y_pred_df_old.reset_index(drop=True), y_pred_df.reset_index(drop=True)], axis=1)
-        y_pred_df.to_csv(f'{results_directory}/regression_results_nn.csv', sep='\t', index=False)
-  
+            results_df.to_csv(f'{results_directory}/regression_results_{model_name}.csv', sep='\t', index=False)
+        else:
+            if model_name=='nn':
+                #concatenate
+                importance_df_old=pd.read_csv(f'{results_directory}/importance_age_{model_name}.csv', sep='\t')
+                importance_df=pd.concat([importance_df_old.reset_index(drop=True), df_fi.reset_index(drop=True), importance_df.reset_index(drop=True),], axis=1)
+                importance_df.to_csv(f'{results_directory}/importance_age_{model_name}.csv', sep='\t', index=False)
+                
+            results_df_old=pd.read_csv(f'{results_directory}/regression_results_{model_name}.csv', sep='\t')
+            results_df=pd.concat([results_df_old.reset_index(drop=True), results_df.reset_index(drop=True)], axis=1)
+            results_df.to_csv(f'{results_directory}/regression_results_{model_name}.csv', sep='\t', index=False)
     
     
     mses.append(mse)
