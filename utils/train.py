@@ -12,6 +12,7 @@ from torch import optim
 import matplotlib.pyplot as plt
 from utils import nn_data
 from utils import nn_model
+from torch.autograd import Variable
 
 def random_forest_model(X_train, y_train, feature):
 
@@ -87,7 +88,7 @@ def svm_regression_model(X_train, y_train):
 
 
 
-def neural_network_classification(X_train, y_train, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs):
+def layer_neural_network(X_train, y_train, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs):
     batch_size = 64
     #Instantiate training data
     train_data = nn_data.Data(X_train, y_train)
@@ -125,3 +126,60 @@ def neural_network_classification(X_train, y_train, input_dim, hidden_dim, outpu
 
     return model
 
+def recurrent_neural_network(X_train, y_train, X_test, y_test, seq_dim, input_dim, hidden_dim, layer_dim, output_dim, learning_rate, loss_fn, num_epochs):
+    batch_size = 64
+    #Instantiate training data
+    
+    train_data = nn_data.DataRNN(X_train, y_train)
+    train_dataloader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
+
+    test_data = nn_data.DataRNN(X_test, y_test)
+    test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False)
+
+    model = nn_model.RNNModel(input_dim, hidden_dim, layer_dim, output_dim)
+    print(model)
+
+    #optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)  
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)  # Example: Reduce learning rate
+  
+    loss_list = []
+    iteration_list = []
+    num_epochs = 100
+    count = 0
+    for epoch in range(num_epochs):
+        for i, (images, labels) in enumerate(train_dataloader):
+
+            train  = Variable(images.view(-1, seq_dim, input_dim))
+            labels = Variable(labels)
+                
+            # Clear gradients
+            optimizer.zero_grad()
+            
+            # Forward propagation
+            outputs = model(train)
+            #print(outputs)
+            
+            # Calculate softmax and ross entropy loss
+            loss = loss_fn(outputs, labels)
+            
+            # Calculating gradients
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
+            
+            # Update parameters
+            optimizer.step()
+            
+            count += 1
+            
+            if count % 250 == 0:        
+                
+                # store loss and iteration
+                loss_list.append(loss.data)
+                iteration_list.append(count)
+                #accuracy_list.append(accuracy)
+                if count % 500 == 0:
+                    # Print Loss
+                    print('Iteration: {}  Loss: {} '.format(count, loss.item()))
+
+    return model
