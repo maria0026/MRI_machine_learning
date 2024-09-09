@@ -1,14 +1,26 @@
 from utils import prepare_csv
 
+norm_confimed=3
+
+if norm_confimed==1:
+    type='positive'
+elif norm_confimed==0:
+    type='negative'
+else:
+    type='all'
+
+folder_out=f'data/{type}_norm_confirmed'
+
+
 path = 'data/original/Subjects.csv'
 prepare_csv.replace_comma_with_dot(path)
 
 folder='data/original'
-old_deliminer = ','
-old_deliminer_2 = ';'
-deliminer = '\t'
+old_delimiter = ','
+old_delimiter_2 = ';'
+delimiter = '\t'
 
-prepare_csv.convert_deliminer(folder, deliminer, old_deliminer, old_deliminer_2)
+prepare_csv.convert_delimiter(folder, delimiter, old_delimiter, old_delimiter_2)
 prepare_csv.convert_line_endings(folder)
 columns=['Brain_Segmentation_Volume','Brain_Segmentation_Volume_Without_Ventricles','Brain_Segmentation_Volume_Without_Ventricles_from_Surf','Total_cortical_gray_matter_volume','Supratentorial_volume','Supratentorial_volume.1', 'Estimated_Total_Intracranial_Volume','Brain Segmentation Volume',	'Brain Segmentation Volume Without Ventricles']
 #z wszystkich oprócz 1
@@ -29,14 +41,13 @@ prepare_csv.add_hemisphere_name(folder, filenames, columns)
 
 #uwuwanie duplikatów subjectów, brakujących danych i danych z norm_confirmed=0 na podstwaie Subjects.csv
 filename='Subjects.csv'
-indexes=prepare_csv.get_indexes_for_cleaning_dataset(folder, filename, data_files=False)
+indexes=prepare_csv.get_indexes_for_cleaning_dataset(folder, filename, data_files=False, norm_confirmed=norm_confimed)
 
 
-# Lista plików CSV
 filenames = ['WM.csv', 'ASEG.csv', 'BRAIN.csv', 'LHA2009.csv', 'LHAPARC.csv', 'LHDKT.csv', 'RHA2009.csv', 'RHAPARC.csv', 'RHDKT.csv']
 
 for filename in filenames:
-    indexes_df=prepare_csv.get_indexes_for_cleaning_dataset(folder,filename, data_files=True)
+    indexes_df=prepare_csv.get_indexes_for_cleaning_dataset(folder,filename, data_files=True, norm_confirmed=norm_confimed)
     if len(indexes_df)>0:
         indexes.append(indexes_df)
     else:
@@ -45,11 +56,10 @@ for filename in filenames:
 #delete duplicates from indexes
 
 indexes = list(set(indexes))
-print(indexes)
+print("ilosc", len(indexes))
+
 #czyszczenie danych
 
-
-folder_out='data/cleaned_data'
 prepare_csv.clean_datasets(indexes, folder, folder_out)
 
 folder_name=folder_out
