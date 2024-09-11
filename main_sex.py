@@ -14,9 +14,11 @@ from utils import plots
 from utils import train
 from utils import test
 
-model_name="forest"
+model_name="rnn" 
+components_nr=35
 
 n_crosval=5
+n_most_important_features=5
 tprs=[]
 fprs=[]
 aucs=[]
@@ -27,14 +29,13 @@ cms=[]
 label_names=['male']
 results_directory='results'
 
-df=pd.read_csv('data/normal/all_concatenated.csv', sep='\t')
-df=df.drop(columns=['identifier', 'norm_confirmed', 'sex', 'female'])
+df=pd.read_csv('data/positive_norm_confirmed_normal/all_concatenated.csv', sep='\t')
 
-df_test=pd.read_csv('data/test_data_normal/all_concatenated.csv', sep='\t')
+df_test=pd.read_csv('data/negative_norm_confirmed_normal/all_concatenated.csv', sep='\t')
 df_test=df_test.drop(columns=['identifier', 'norm_confirmed', 'sex', 'female'])
 
-#df=pd.read_csv('data/all/all_concatenated.csv', sep='\t')
-#df=df.drop(columns=['identifier', 'norm_confirmed', 'sex', 'female'])
+#df=pd.read_csv('data/all_norm_confirmed_normal/all_concatenated.csv', sep='\t')
+df=df.drop(columns=['identifier', 'norm_confirmed', 'sex', 'female'])
 
 #drop columns containing norm and Std
 #df=df.drop(columns=[col for col in df.columns if 'norm' in col or 'Std' in col])
@@ -48,9 +49,8 @@ for i in range(n_crosval):
     X_train, X_test=prepare_dataset.standarize_data(X_train, X_test)
 
     #PCA
-    components_nr=35
-    pca_mri, train_pca, test_pca, importance_df=dimensions_reduction.principal_component_analysis(X_train, X_test, components_nr)
-    print(importance_df)
+
+    pca_mri, train_pca, test_pca, importance_df=dimensions_reduction.principal_component_analysis(X_train, X_test, components_nr, n_features=n_most_important_features)
     explained_variance_ratio=pca_mri.explained_variance_ratio_
     formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
     print('Explained variability per principal component: {}'.format(formatted_explained_variance))
@@ -76,7 +76,7 @@ for i in range(n_crosval):
     feature='male'
 
     input_dim = components_nr
-    hidden_dim = 10
+    hidden_dim = 20
     output_dim = 1
     learning_rate = 0.075
     loss_fn = nn.BCELoss()
@@ -105,19 +105,11 @@ for i in range(n_crosval):
         importance_df['component_names']=feature_importances.index
         importance_df['comp_imp']=feature_importances.values
 
-        #save to csv
-        if i==0:
-            importance_df.to_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t')
-        else:
-            #concatenate
-            importance_df_old=pd.read_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t', index_col=0)
-            importance_df=pd.concat([importance_df_old, importance_df], axis=1)
-            importance_df.to_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t', index=True)
-        
-
+ 
     elif model_name=="rnn":
-
-        model=train.recurrent_neural_network(X_train, y_train, X_test, y_test, seq_dim, input_dim, hidden_dim, layer_dim, output_dim, learning_rate, loss_fn, num_epochs)
+        learning_rate=1e-3
+        model=train.recurrent_neural_network(X_train, y_train, seq_dim, input_dim, hidden_dim, layer_dim, output_dim, learning_rate, loss_fn, num_epochs)
+        #print("expl",explainer)
         accuracy, precision, recall, FPR, cm, fpr, tpr=test.recurrent_neural_network_classification(X_test, y_test, seq_dim, input_dim, model)
 
 
@@ -125,6 +117,15 @@ for i in range(n_crosval):
         model=train.layer_neural_network(X_train, y_train, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs)
         accuracy, precision, recall, FPR, cm, fpr, tpr, df_fi=test.neural_network_classification(X_test, y_test, model)
 
+
+    if model_name!="nn":
+        if i==0:
+            importance_df.to_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t')
+        else:
+            #concatenate
+            importance_df_old=pd.read_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t', index_col=0)
+            importance_df=pd.concat([importance_df_old, importance_df], axis=1)
+            importance_df.to_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t', index=True)
 
     if model_name=="nn":
   
@@ -134,7 +135,7 @@ for i in range(n_crosval):
         else:
             #concatenate
             importance_df_old=pd.read_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t')
-            importance_df=pd.concat([importance_df_old.reset_index(drop=True), df_fi.reset_index(drop=True), importance_df.reset_index(drop=True),], axis=1)
+            importance_df=pd.concat([importance_df_old.reset_index(drop=True), df_fi.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
             importance_df.to_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t', index=False)
     
 
