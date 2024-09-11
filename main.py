@@ -14,14 +14,13 @@ df=pd.read_csv(filename, sep='\t')
 #print(df)
 #plots.plot_some_data(df)
 
-
 #macierze korelacji z Total Intracranial Volume
 path='data/positive_norm_confirmed_normal/all_concatenated.csv'
 folder_out='data/correlation_matrices'
-volume_analysis.correlation_matrix_total_volume(path, folder_out)
+#volume_analysis.correlation_matrix_total_volume(path, folder_out)
+
 
 #wyswietlenie korelacji
-
 correlations=pd.read_csv('data/correlation_matrices/volume_area_correlation_matrix.csv', sep='\t', index_col=0)
 #wykres osobno dla mężczyzn i kobiet
 df=prepare_dataset.transform_correlations_total_volume(correlations)
@@ -53,19 +52,19 @@ df=df.drop(columns=['identifier', 'norm_confirmed', 'sex', 'female', 'male', 'ag
 corr_matrix=df.corr()
 corr_matrix.to_csv(f'{folder_out}/all_concatenated_volume_devided_correlation_matrix.csv', sep='\t', index=True)
 
-
 correlations=pd.read_csv('data/correlation_matrices/all_concatenated_volume_devided_correlation_matrix.csv', sep='\t', index_col=0)
 clustered_correlations, selected_features=dimensions_reduction.cluster_correlations(correlations)
 print(selected_features)
 
+'''
 #wyswietlenie korelacji
-
 correlations=pd.read_csv('data/correlation_matrices/all_concatenated_correlation_matrix.csv', sep='\t', index_col=0)
 correlations=correlations.iloc[:50,:50]
-plots.correlation_matrix(correlations)
-clustered_correlations, selected_featues=dimensions_reduction.cluster_correlations(correlations)
-plots.correlation_matrix(clustered_correlations)
-'''
+#plots.correlation_matrix(correlations)
+#clustered_correlations, selected_featues=dimensions_reduction.cluster_correlations(correlations)
+#plots.correlation_matrix(clustered_correlations)
+
+
 importance_df=pd.read_csv('results/importance_sex_nn.csv', sep='\t')
 importance_df=pd.read_csv('results/importance_sex_forest.csv', sep='\t')
 #plots.component_importance(importance_df, model='Tree')
