@@ -12,11 +12,12 @@ from utils import train
 from utils import test
 from utils import nn_data
 
-df=pd.read_csv('data/normal/all_concatenated.csv', sep='\t')
+df=pd.read_csv('data/positive_norm_confirmed_normal/all_concatenated.csv', sep='\t')
 df=df.drop(columns=['identifier', 'norm_confirmed', 'sex', 'female'])
 label_names=['age']
 column_to_copy='male'
 n_crosval=5
+n_most_important_features=5
 mses=[]
 rmses=[]
 maes=[]
@@ -29,7 +30,7 @@ learning_rate = 0.075
 loss_fn = nn.MSELoss()
 num_epochs = 100
 
-model_name="forest"
+model_name="rnn"
 
 for i in range(n_crosval):
     prepare_dataset.divide_by_total_volume(df)
@@ -43,7 +44,7 @@ for i in range(n_crosval):
     #PCA
     components_nr=40
 
-    pca_mri, train_pca, test_pca, importance_df=dimensions_reduction.principal_component_analysis(X_train, X_test, components_nr)
+    pca_mri, train_pca, test_pca, importance_df=dimensions_reduction.principal_component_analysis(X_train, X_test, components_nr, n_most_important_features)
     explained_variance_ratio=pca_mri.explained_variance_ratio_
     formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
     print('Explained variability per principal component: {}'.format(formatted_explained_variance))
@@ -118,19 +119,7 @@ for i in range(n_crosval):
         importance_df['comp_imp']=feature_importances.values
         mse, rmse, mae, results_df= test.random_forest_regression_model(X_test, y_test, feature, rf)
 
-        if i==0:
-            importance_df.to_csv(f'{results_directory}/importance_age_forest.csv', sep='\t')
-
-            results_df.to_csv(f'{results_directory}/regression_results_forest.csv', sep='\t')
-        else:
-            #concatenate
-            importance_df_old=pd.read_csv(f'{results_directory}/importance_age_forest.csv', sep='\t', index_col=0)
-            importance_df=pd.concat([importance_df_old, importance_df], axis=1)
-            importance_df.to_csv(f'{results_directory}/importance_age_forest.csv', sep='\t', index=True)
-
-            results_df_old=pd.read_csv(f'{results_directory}/regression_results_forest.csv', sep='\t')
-            results_df=pd.concat([results_df_old.reset_index(drop=True), results_df.reset_index(drop=True)], axis=1)
-            results_df.to_csv(f'{results_directory}/regression_results_forest.csv', sep='\t', index=False)
+        
         
     elif model_name=='nn':
 
@@ -141,27 +130,42 @@ for i in range(n_crosval):
         mse, rmse, mae, results_df, df_fi=test.neural_network_regression(X_test, y_test, model)
  
     elif model_name=='rnn':
-
+        learning_rate=1e-3
         input_dim = components_nr
         y_train=y_train/100
         y_test=y_test/100
-        model=train.recurrent_neural_network(X_train, y_train, X_test, y_test, seq_dim, input_dim, hidden_dim, layer_dim, output_dim, learning_rate, loss_fn, num_epochs)
+        model=train.recurrent_neural_network(X_train, y_train, seq_dim, input_dim, hidden_dim, layer_dim, output_dim, learning_rate, loss_fn, num_epochs)
+        
         mse, rmse, mae, results_df=test.recurrent_neural_network_regression(X_test, y_test, seq_dim, input_dim, model)
     
-
-    if model_name!='forest':
+    if model_name!='nn':
         if i==0:
-            if model_name=='nn':
-                df_fi=pd.concat([df_fi.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
-                df_fi.to_csv(f'{results_directory}/importance_age_{model_name}.csv', sep='\t', index=False)
+            importance_df.to_csv(f'{results_directory}/importance_age_{model_name}.csv', sep='\t')
+
+            results_df.to_csv(f'{results_directory}/regression_results_{model_name}.csv', sep='\t')
+        else:
+            #concatenate
+            importance_df_old=pd.read_csv(f'{results_directory}/importance_age_{model_name}.csv', sep='\t', index_col=0)
+            importance_df=pd.concat([importance_df_old, importance_df], axis=1)
+            importance_df.to_csv(f'{results_directory}/importance_age_{model_name}.csv', sep='\t', index=True)
+
+            results_df_old=pd.read_csv(f'{results_directory}/regression_results_{model_name}.csv', sep='\t')
+            results_df=pd.concat([results_df_old.reset_index(drop=True), results_df.reset_index(drop=True)], axis=1)
+            results_df.to_csv(f'{results_directory}/regression_results_{model_name}.csv', sep='\t', index=False)
+
+    if model_name=='nn':
+        if i==0:
+
+            df_fi=pd.concat([df_fi.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
+            df_fi.to_csv(f'{results_directory}/importance_age_{model_name}.csv', sep='\t', index=False)
 
             results_df.to_csv(f'{results_directory}/regression_results_{model_name}.csv', sep='\t', index=False)
         else:
-            if model_name=='nn':
-                #concatenate
-                importance_df_old=pd.read_csv(f'{results_directory}/importance_age_{model_name}.csv', sep='\t')
-                importance_df=pd.concat([importance_df_old.reset_index(drop=True), df_fi.reset_index(drop=True), importance_df.reset_index(drop=True),], axis=1)
-                importance_df.to_csv(f'{results_directory}/importance_age_{model_name}.csv', sep='\t', index=False)
+
+            #concatenate
+            importance_df_old=pd.read_csv(f'{results_directory}/importance_age_{model_name}.csv', sep='\t')
+            importance_df=pd.concat([importance_df_old.reset_index(drop=True), df_fi.reset_index(drop=True), importance_df.reset_index(drop=True),], axis=1)
+            importance_df.to_csv(f'{results_directory}/importance_age_{model_name}.csv', sep='\t', index=False)
                 
             results_df_old=pd.read_csv(f'{results_directory}/regression_results_{model_name}.csv', sep='\t')
             results_df=pd.concat([results_df_old.reset_index(drop=True), results_df.reset_index(drop=True)], axis=1)
