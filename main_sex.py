@@ -1,31 +1,18 @@
 import pandas as pd
-from scipy.stats import shapiro
 import matplotlib.pyplot as plt
-import seaborn as sns
-from scipy import stats
 import numpy as np
 from sklearn.metrics import roc_curve, auc
-from torch.utils.data import Dataset, DataLoader
 from torch import nn
 
-from utils import dimensions_reduction
-from utils import prepare_dataset
-from utils import plots
-from utils import train
-from utils import test
+from utils import dimensions_reduction, prepare_dataset, plots, train, test
 
 model_name="nn" 
 components_nr=35
 
 n_crosval=5
 n_most_important_features=5
-tprs=[]
-fprs=[]
-aucs=[]
-accuracies=[]
-precisions=[]
-recalls=[]
-cms=[]
+tprs, fprs, aucs, accuracies, precisions, recalls, cms = [], [], [], [], [], [], []
+parameter_dict={}
 label_names=['male']
 results_directory='results'
 
