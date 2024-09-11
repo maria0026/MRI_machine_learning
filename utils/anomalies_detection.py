@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 from scipy.stats import shapiro 
 from scipy import stats
-import statsmodels.api as sm
 
 def test_normality(filename, columns_to_drop):
     df=pd.read_csv(filename, sep='\t')
@@ -20,8 +19,8 @@ def test_normality(filename, columns_to_drop):
         threshold_mad = 3
         
         #test normalności
-        stat, p = shapiro(data)
-        stat, p=sm.stats.diagnostic.lilliefors(data)
+        #stat, p = shapiro(data)
+        #stat, p=sm.stats.diagnostic.lilliefors(data)
         stat, p= stats.kstest(data, 'norm', args=(np.mean(data), np.std(data)))
 
         upper_bound = median + threshold_mad * mad
@@ -35,8 +34,9 @@ def test_normality(filename, columns_to_drop):
         outliers_number=df_outliers[column].sum()
         
         data=data[df_outliers[column]==0]
-        stat, p_after = shapiro(data)
-        stat, p_after=sm.stats.diagnostic.lilliefors(data)
+
+        #stat, p_after = shapiro(data)
+        #stat, p_after=sm.stats.diagnostic.lilliefors(data)
         stat, p_after= stats.kstest(data, 'norm', args=(np.mean(data), np.std(data)))
         
         if p_after < 0.05:
@@ -48,8 +48,7 @@ def test_normality(filename, columns_to_drop):
     df_mad = pd.DataFrame(mad_values)
 
     df_mad.insert(0, 'name', ['median', 'mad', 'outliers_number', 'p', 'p_after', 'wynik testu'])
-    df_mad.to_csv('results/outliers_values.csv', sep='\t', index=False)
-    df_outliers.to_csv('results/outliers.csv', sep='\t', index=True)
+    return df_mad, df_outliers
 
     
  
