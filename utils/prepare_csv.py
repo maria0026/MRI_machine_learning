@@ -28,7 +28,7 @@ def replace_comma_with_dot(file_path):
     except Exception as e:
         print(f"Wystąpił błąd podczas przetwarzania pliku {file_path}: {e}")
 
-def convert_deliminer(folder, deliminer, old_deliminer, old_deliminer_2):
+def convert_delimiter(folder, delimiter, old_delimiter, old_delimiter_2):
 
     files=os.listdir(folder)
     print(files)
@@ -46,23 +46,23 @@ def convert_deliminer(folder, deliminer, old_deliminer, old_deliminer_2):
                 content = file.read()
             
             # Sprawdź, czy potrzebna jest konwersja
-            if old_deliminer in content:
+            if old_delimiter in content:
                 # Zamień końce linii z Windows na Unix
-                content = content.replace(old_deliminer, deliminer)
+                content = content.replace(old_delimiter, delimiter)
                 # Zapisz plik z poprawionymi końcami linii
                 with open(file_path, 'w', newline='', encoding='utf-8') as file:
                     file.write(content)
-                print(f"Deliminer zmieniony: {file_path}")
+                print(f"delimiter zmieniony: {file_path}")
 
-            elif old_deliminer_2 in content:
-                content = content.replace(old_deliminer_2, deliminer)
+            elif old_delimiter_2 in content:
+                content = content.replace(old_delimiter_2, delimiter)
                 
                 # Zapisz plik z poprawionymi końcami linii
                 with open(file_path, 'w', newline='', encoding='utf-8') as file:
                     file.write(content)
-                print(f"Deliminer zmieniony: {file_path}")
+                print(f"delimiter zmieniony: {file_path}")
             else:
-                print(f"Plik ma już dobry deliminer {file_path}")
+                print(f"Plik ma już dobry delimiter {file_path}")
 
         except Exception as e:
             print(f"Wystąpił błąd podczas przetwarzania pliku {file_path}: {e}")
@@ -125,6 +125,7 @@ def get_indexes_for_cleaning_dataset(folder, filename, data_files=True, norm_con
 
     filename= os.path.join(folder, filename)
     df = pd.read_csv(filename, sep='\t')
+    
     df.columns = df.columns.str.strip()  # Usuwa nadmiarowe białe znaki
     if data_files==True:
         #delete last columns
@@ -137,17 +138,21 @@ def get_indexes_for_cleaning_dataset(folder, filename, data_files=True, norm_con
     missing_data_indexes = missing_data.index.tolist()
   
     if data_files==False:
-
+        #df = df.loc[:, ~df.columns.str.contains('Unnamed')]
         #indexy zawierające 0 w kolumunie norm_confirmed
         zero_norm_confirmed = df[df['norm_confirmed']==1-norm_confirmed]
         zero_norm_confirmed_indexes = zero_norm_confirmed.index.tolist()
 
         #dostjemy indexy duplikatów poza pierwszym wystąpieniem
-        # Filtrujemy wiersze, gdzie 'norm_confirmed' = 1
-        filtered_df = df[df['norm_confirmed'] == norm_confirmed]
-        
-        duplicates = filtered_df[filtered_df.duplicated(subset='identifier', keep='first')]
-        duplicates_indexes = duplicates.index.tolist()
+        if (norm_confirmed==1 or norm_confirmed==0):
+            # Filtrujemy wiersze, gdzie 'norm_confirmed' = 1
+            filtered_df = df[df['norm_confirmed'] == norm_confirmed]
+            
+            duplicates = filtered_df[filtered_df.duplicated(subset='identifier', keep='first')]
+            duplicates_indexes = duplicates.index.tolist()
+        else:
+            duplicates = df[df.duplicated(subset='identifier', keep='first')]
+            duplicates_indexes = duplicates.index.tolist()
 
         #concat all lists
         all_indexes = duplicates_indexes + missing_data_indexes + zero_norm_confirmed_indexes
@@ -168,7 +173,9 @@ def clean_datasets(indexes_to_drop, folder, folder_out):
         print("PLik",path)
         df = pd.read_csv(path, sep='\t')
         df=df.drop(indexes_to_drop, inplace=False)
-        #save df to csv with deliminer ;
+        print("rozmiar",df.shape)
+        #save df to csv with delimiter ;
+        df=df.dropna(axis=1, how='all')
         df.to_csv(f'{folder_out}/{filename}', sep="\t", index=False)
 
 
