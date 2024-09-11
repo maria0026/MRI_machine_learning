@@ -99,49 +99,44 @@ def cluster_correlations(correlations):
 
 
 
-def principal_component_analysis(X_train, X_test, components_nr):
+def principal_component_analysis(X_train, X_test, components_nr, n_features=3):
 
     pca_mri = PCA(components_nr)
 
     train_pca = pca_mri.fit_transform(X_train)
     test_pca = pca_mri.transform(X_test)
 
+    explained_variance_ratio=pca_mri.explained_variance_ratio_
+    formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
+
     #mówi jak cechy przykładają się do komponentów
     component_loadings = pca_mri.components_
     n_pcs= component_loadings.shape[0]
+    
 
-    #get the index of the most important feature on EACH component
-    most_important = [np.abs(component_loadings[i]).argmax() for i in range(n_pcs)]
-    #get the secound most important feature
-    second_important = [np.abs(component_loadings[i]).argsort()[-2] for i in range(n_pcs)]
-    third_important = [np.abs(component_loadings[i]).argsort()[-3] for i in range(n_pcs)]
-
+    important_indices=get_top_features(component_loadings, n_features, n_pcs)
     initial_feature_names = X_train.columns
     #get the names
-    most_important_names = [initial_feature_names[most_important[i]] for i in range(n_pcs)]
-    second_important_names = [initial_feature_names[second_important[i]] for i in range(n_pcs)]
-    third_important_names = [initial_feature_names[third_important[i]] for i in range(n_pcs)]
-
+    important_names= [initial_feature_names[important_indices[i]] for i in range(n_pcs)]
     #get the values
-    most_important_values = [component_loadings[i][most_important[i]] for i in range(n_pcs)]
-    second_important_values = [component_loadings[i][second_important[i]] for i in range(n_pcs)]
-    third_important_values = [component_loadings[i][third_important[i]] for i in range(n_pcs)]
+    important_values= [component_loadings[i][important_indices[i]] for i in range(n_pcs)]
 
-    dic = {i+1: most_important_names[i] for i in range(n_pcs)}
-    dic_second = {i+1: second_important_names[i] for i in range(n_pcs)}
-    dic_third = {i+1: third_important_names[i] for i in range(n_pcs)}
-
-    # Build the DataFrame with both most and second most important features
     importance_df = pd.DataFrame({
-        'Most Important Feature Names': pd.Series(dic).values,
-        'Most Important Feature Values': pd.Series(most_important_values).values,
-        'Second Most Important Feature Names': pd.Series(dic_second).values,
-        'Second Most Important Feature Values': pd.Series(second_important_values).values,
-        'Third Most Important Feature Names': pd.Series(dic_third).values,
-        'Third Most Important Feature Values': pd.Series(third_important_values).values
-    }, index=dic.keys())
+    f'Feature {j+1} Name': [important_names[i][j] for i in range(n_pcs)] for j in range(n_features)})
+
+    importance_df['Explained Variability'] = formatted_explained_variance
+    
+    for j in range(n_features):
+        importance_df[f'Feature {j+1} Value'] = [important_values[i][j] for i in range(n_pcs)]
+
+    # Dodanie indeksów jako numerów komponentów
+    importance_df.index = range(1, n_pcs + 1)
 
     return pca_mri, train_pca, test_pca, importance_df
+
+def get_top_features(loadings, n_features, n_pcs):
+    important_indices = [np.abs(loadings[i]).argsort()[-n_features:][::-1] for i in range(n_pcs)]
+    return important_indices
 
 def stochastic_neighbor_embedding(X_train, X_test, components_nr):
     tsne = TSNE(n_components=2, random_state=42)
