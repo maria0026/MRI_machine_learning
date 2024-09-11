@@ -21,9 +21,7 @@ label_names=['age']
 column_to_copy='male'
 n_crosval=5
 n_most_important_features=5
-mses=[]
-rmses=[]
-maes=[]
+mses, rmses, maes =[], [], []
 results_directory='results'
 input_dim = components_nr
 hidden_dim = 20
@@ -141,7 +139,6 @@ for i in range(n_crosval):
     if model_name!='nn':
         if i==0:
             importance_df.to_csv(f'{results_directory}/importance_age_{model_name}.csv', sep='\t')
-
             results_df.to_csv(f'{results_directory}/regression_results_{model_name}.csv', sep='\t')
         else:
             #concatenate
