@@ -9,14 +9,14 @@ from sklearn.metrics import roc_curve, auc
 from utils import volume_analysis
 
 
-filename='data/cleaned_data/all_concatenated.csv'
+filename='data/positive_norm_confirmed/all_concatenated.csv'
 df=pd.read_csv(filename, sep='\t')
 #print(df)
 #plots.plot_some_data(df)
 
 
 #macierze korelacji z Total Intracranial Volume
-path='data/cleaned_data/all_concatenated.csv'
+path='data/positive_norm_confirmed_normal/all_concatenated.csv'
 folder_out='data/correlation_matrices'
 volume_analysis.correlation_matrix_total_volume(path, folder_out)
 
