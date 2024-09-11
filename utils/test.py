@@ -157,6 +157,7 @@ def neural_network_classification(X_test, y_test, model):
 
     y_pred = []
     y_test = []
+    model.eval()
     with torch.no_grad():
         for X, y in test_dataloader:
             outputs = model(X)
@@ -220,6 +221,7 @@ def neural_network_regression(X_test, y_test, model):
 
     y_pred = []
     y_test = []
+    model.eval()
     with torch.no_grad():
         for X, y in test_dataloader:
             outputs = model(X)
@@ -260,13 +262,13 @@ def neural_network_regression(X_test, y_test, model):
 def recurrent_neural_network_classification(X_test, y_test, seq_dim, input_dim, model):
     
     batch_size = 64
-    test_data =nn_data.DataRNN(X_test, y_test)
+    test_data =nn_data.DataRNN(X_test, y_test, sequence_length=seq_dim)
     test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
-    
     
 
     y_pred = []
     y_test = []
+    model.eval()
     # Iterate through test dataset
     for images, y in test_dataloader:
         images = Variable(images.view(-1, seq_dim, input_dim))
@@ -313,12 +315,13 @@ def recurrent_neural_network_classification(X_test, y_test, seq_dim, input_dim, 
 def recurrent_neural_network_regression(X_test, y_test, seq_dim, input_dim, model):
     
     batch_size = 64
-    test_data =nn_data.DataRNN(X_test, y_test)
+    test_data =nn_data.DataRNN(X_test, y_test, sequence_length=seq_dim)
     test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
     
     y_pred = []
     y_test = []
     # Iterate through test dataset
+    model.eval()
     for images, y in test_dataloader:
         images = Variable(images.view(-1, seq_dim, input_dim))
         
