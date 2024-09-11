@@ -14,7 +14,7 @@ from utils import plots
 from utils import train
 from utils import test
 
-model_name="rnn" 
+model_name="nn" 
 components_nr=35
 
 n_crosval=5
@@ -49,21 +49,14 @@ for i in range(n_crosval):
     X_train, X_test=prepare_dataset.standarize_data(X_train, X_test)
 
     #PCA
-
     pca_mri, train_pca, test_pca, importance_df=dimensions_reduction.principal_component_analysis(X_train, X_test, components_nr, n_features=n_most_important_features)
     explained_variance_ratio=pca_mri.explained_variance_ratio_
     formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
     print('Explained variability per principal component: {}'.format(formatted_explained_variance))
     print(len(formatted_explained_variance))
     print(train_pca.shape, test_pca.shape)
-
-    #plots.distribution(train_pca, test_pca)
-    
-    #plots
     #plots.pca(pca_mri, train_pca, test_pca, X_train, y_train, X_test, y_test)
     #plots.scree_plot(pca_mri)
-
-    #mamy teraz train_pca i test_pca
     train_principal_Df = pd.DataFrame(data = train_pca
                 , columns = [str(i) for i in range(1,train_pca.shape[1]+1)], index=X_train.index)
 
@@ -76,27 +69,16 @@ for i in range(n_crosval):
     feature='male'
 
     input_dim = components_nr
-    hidden_dim = 20
     output_dim = 1
-    learning_rate = 0.075
     loss_fn = nn.BCELoss()
     num_epochs = 100
-    seq_dim=1
-    layer_dim=1
 
-    if model_name=="svm":
-    
-        clf=train.svm_classification_model(X_train, y_train)
-        accuracy, precision, recall, cm, fpr, tpr=test.svm_classification_model(X_test, y_test, clf)
-    
 
-    elif model_name=="forest":
-  
+    if model_name=="forest":
         rf=train.random_forest_model(X_train, y_train, feature)
         accuracy, precision, recall, cm, fpr, tpr=test.random_forest_model(X_test, y_test, feature, rf)
         best_rf = rf.best_estimator_
         feature_importances = pd.Series(best_rf.feature_importances_, index=X_train.columns).sort_values(ascending=False)
-
         feature_importances.index = feature_importances.index.astype(int)
         print(feature_importances)
         #sort ascending by indexes
@@ -105,35 +87,44 @@ for i in range(n_crosval):
         importance_df['component_names']=feature_importances.index
         importance_df['comp_imp']=feature_importances.values
 
- 
-    elif model_name=="rnn":
-        learning_rate=1e-3
-        model=train.recurrent_neural_network(X_train, y_train, seq_dim, input_dim, hidden_dim, layer_dim, output_dim, learning_rate, loss_fn, num_epochs)
-        #print("expl",explainer)
-        accuracy, precision, recall, FPR, cm, fpr, tpr=test.recurrent_neural_network_classification(X_test, y_test, seq_dim, input_dim, model)
+
+    elif model_name=="svm":
+        clf=train.svm_classification_model(X_train, y_train)
+        accuracy, precision, recall, cm, fpr, tpr=test.svm_classification_model(X_test, y_test, clf)
 
 
     elif model_name=="nn":
-        model=train.layer_neural_network(X_train, y_train, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs)
+        momentum=0.3
+        weight_decay=0.08
+        learning_rate = 0.075
+        hidden_dim = 20
+        model=train.layer_neural_network(X_train, y_train, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs, momentum, weight_decay)
         accuracy, precision, recall, FPR, cm, fpr, tpr, df_fi=test.neural_network_classification(X_test, y_test, model)
+ 
+
+    elif model_name=="rnn":
+        weight_decay=0.008
+        learning_rate=1e-3
+        seq_dim=1
+        layer_dim=1
+        hidden_dim = 10
+        model=train.recurrent_neural_network(X_train, y_train, seq_dim, input_dim, hidden_dim, layer_dim, output_dim, learning_rate, loss_fn, num_epochs, weight_decay)
+        accuracy, precision, recall, FPR, cm, fpr, tpr=test.recurrent_neural_network_classification(X_test, y_test, seq_dim, input_dim, model)
 
 
     if model_name!="nn":
         if i==0:
             importance_df.to_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t')
         else:
-            #concatenate
             importance_df_old=pd.read_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t', index_col=0)
             importance_df=pd.concat([importance_df_old, importance_df], axis=1)
             importance_df.to_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t', index=True)
 
-    if model_name=="nn":
-  
+    else:
         if i==0:
             df_fi=pd.concat([df_fi.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
             df_fi.to_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t', index=False)
         else:
-            #concatenate
             importance_df_old=pd.read_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t')
             importance_df=pd.concat([importance_df_old.reset_index(drop=True), df_fi.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
             importance_df.to_csv(f'{results_directory}/importance_sex_{model_name}.csv', sep='\t', index=False)
@@ -146,9 +137,7 @@ for i in range(n_crosval):
     fprs.append(fpr)
     roc_auc = auc(fpr, tpr)
     aucs.append(roc_auc)
-    #plots.confusion_matrix(cm)
-    #plots.random_forest_features(X_train, rf)
-    #plots.roc_curve(fpr, tpr)
+
 
 print("Accuracy", np.mean(accuracies), np.std(accuracies))
 print("Precision", np.mean(precisions), np.std(precisions))
