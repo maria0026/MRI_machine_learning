@@ -89,7 +89,7 @@ def svm_regression_model(X_train, y_train):
 
 
 
-def layer_neural_network(X_train, y_train, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs):
+def layer_neural_network(X_train, y_train, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs, momentum=0, weight_decay=0):
     batch_size = 64
     #Instantiate training data
     train_data = nn_data.Data(X_train, y_train)
@@ -98,7 +98,7 @@ def layer_neural_network(X_train, y_train, input_dim, hidden_dim, output_dim, le
     model = nn_model.NeuralNetwork(input_dim, hidden_dim, output_dim)
     print(model)
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)    
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)    
     loss_values = []
 
     for epoch in range(num_epochs):
@@ -127,33 +127,24 @@ def layer_neural_network(X_train, y_train, input_dim, hidden_dim, output_dim, le
 
     return model
 
-def recurrent_neural_network(X_train, y_train, seq_dim, input_dim, hidden_dim, layer_dim, output_dim, learning_rate, loss_fn, num_epochs):
+def recurrent_neural_network(X_train, y_train, seq_dim, input_dim, hidden_dim, layer_dim, output_dim, learning_rate, loss_fn, num_epochs, weight_decay=0):
     batch_size = 64
-    #Instantiate training data
     
-    train_data = nn_data.DataRNN(X_train, y_train)
+    train_data = nn_data.DataRNN(X_train, y_train, sequence_length= seq_dim)
     train_dataloader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
-
-    #take a subset of the train data
-    X_train_tensor = torch.tensor(X_train.values, dtype=torch.float32)
-    X_train_explain = X_train_tensor[:300]
-    X_train_explain = X_train_explain.view(-1, seq_dim, input_dim)
-
-    X_train_values= torch.tensor(X_train.values, dtype=torch.float32)
-    X_train_values = X_train_values.view(-1, seq_dim, input_dim)
-
     model = nn_model.RNNModel(input_dim, hidden_dim, layer_dim, output_dim)
     print(model)
      
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
   
     loss_list = []
     iteration_list = []
     count = 0
+    model.train()
     for epoch in range(num_epochs):
-        for i, (images, labels) in enumerate(train_dataloader):
+        for i, (features, labels) in enumerate(train_dataloader):
 
-            train  = Variable(images.view(-1, seq_dim, input_dim))
+            train  = Variable(features.view(-1, seq_dim, input_dim))
             labels = Variable(labels)
                 
             # Clear gradients
@@ -169,21 +160,15 @@ def recurrent_neural_network(X_train, y_train, seq_dim, input_dim, hidden_dim, l
             # Calculating gradients
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-
             
             # Update parameters
             optimizer.step()
-            
             count += 1
             
             if count % 250 == 0:        
-                
-                # store loss and iteration
                 loss_list.append(loss.data)
                 iteration_list.append(count)
-                #accuracy_list.append(accuracy)
                 if count % 500 == 0:
-                    # Print Loss
                     print('Iteration: {}  Loss: {} '.format(count, loss.item()))
     #explainer = shap.DeepExplainer(model, X_train_explain)
     #shap_values = explainer.shap_values(X_train_values)
