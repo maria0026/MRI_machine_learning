@@ -14,7 +14,7 @@ from eli5.sklearn import PermutationImportance
 import eli5
 from sklearn.base import BaseEstimator, ClassifierMixin
 from torch.autograd import Variable
-
+import shap
 
 def random_forest_model(X_test, y_test, feature, rf):
     
@@ -56,7 +56,6 @@ def random_forest_regression_model(X_test, y_test, feature, rf):
         'Actual': y_test[feature].values,  # Convert to NumPy array if it's not already
         'Predicted': y_pred
     })
-    #results_df.to_csv('results/regression_results_forest.csv', sep='\t')
     
     mse=mean_squared_error(y_test[feature], y_pred)
     rmse = float(format(np.sqrt(mean_squared_error(y_test[feature], y_pred)), '.3f'))
@@ -103,9 +102,7 @@ def svm_regression_model(X_test, y_test, clf):
     #Predict the response for test dataset
     y_pred = clf.predict(X_test)
 
-    y_pred_flat = y_pred  # just use y_pred directly
-
-    # Ensure y_test is flat too, which it should already be
+    y_pred_flat = y_pred 
     y_test_flat = y_test.values.ravel() 
 
     # Make sure y_test[feature] and y_pred are aligned
@@ -163,11 +160,10 @@ def neural_network_classification(X_test, y_test, model):
     with torch.no_grad():
         for X, y in test_dataloader:
             outputs = model(X)
-
-            # Spłaszczenie wyjść modelu do jednowymiarowego wektora
+            #Spłaszczenie
             predicted = np.where(outputs.view(-1).numpy() < 0.5, 0, 1)
-            # Konwersja y do płaskiej postaci
             y = y.view(-1).numpy()
+
             y_pred.append(predicted)
             y_test.append(y)
             
@@ -212,12 +208,7 @@ def neural_network_classification(X_test, y_test, model):
                           std=perm.feature_importances_std_,
                             ))
     df_fi = df_fi.round(4)
-    #df_fi.sort_values('feat_imp', ascending=False)
-    #save to csv
-    #df_fi.to_csv('importance.csv', sep='\t', index=False)
 
-    weights=eli5.show_weights(perm, feature_names=[f'component_{i}' for i in range(X_test.shape[1])])
-    #print(eli5.format_as_text(perm, feature_names=[f'feature_{i}' for i in range(X_test.shape[1])]))
 
     return accuracy, precision, recall, FPR, cf_matrix, fpr, tpr, df_fi
 
@@ -232,11 +223,10 @@ def neural_network_regression(X_test, y_test, model):
     with torch.no_grad():
         for X, y in test_dataloader:
             outputs = model(X)
-
-            # Spłaszczenie wyjść modelu do jednowymiarowego wektora
+            #Spłaszczenie
             predicted = outputs.view(-1).numpy()
-            # Konwersja y do płaskiej postaci
             y = y.view(-1).numpy()
+
             y_pred.append(predicted)
             y_test.append(y)
             
@@ -268,11 +258,13 @@ def neural_network_regression(X_test, y_test, model):
     return mse, rmse, mae, y_pred_df, df_fi
 
 def recurrent_neural_network_classification(X_test, y_test, seq_dim, input_dim, model):
-    print("y_test", y_test)
+    
     batch_size = 64
     test_data =nn_data.DataRNN(X_test, y_test)
     test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
     
+    
+
     y_pred = []
     y_test = []
     # Iterate through test dataset
@@ -295,8 +287,7 @@ def recurrent_neural_network_classification(X_test, y_test, seq_dim, input_dim, 
     y_pred_flat = np.array(y_pred_flat).flatten()
     y_test_flat = np.array(y_test_flat).flatten()
     y_pred_binary = (y_pred_flat > 0.5).astype(int)
-    print("pred", y_pred_binary)
-    print("test", y_test_flat)
+
     accuracy = accuracy_score(y_test_flat, y_pred_binary)
     precision = precision_score(y_test_flat, y_pred_binary)
     recall = recall_score(y_test_flat, y_pred_binary)
@@ -315,7 +306,7 @@ def recurrent_neural_network_classification(X_test, y_test, seq_dim, input_dim, 
     #roc curve
     fpr, tpr, thresholds = roc_curve(y_test_flat, y_pred_flat) 
     cf_matrix = confusion_matrix(y_test_flat, y_pred_flat>0.5)
-
+    
 
     return accuracy, precision, recall, FPR, cf_matrix, fpr, tpr
 
