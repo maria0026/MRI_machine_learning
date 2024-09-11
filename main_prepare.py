@@ -31,8 +31,12 @@ columns=['White_Surface_Total_Area', 'Mean_Thickness']
 filenames=['LHA2009.csv', 'LHAPARC.csv', 'RHA2009.csv', 'RHAPARC.csv']
 prepare_csv.delete_specified_columns(folder, filenames, columns)
 
-columns=['Volume of ventricles and choroid plexus']
+columns=['Volume of ventricles and choroid plexus', 'Left hemisphere cortical gray matter volume','Right hemisphere cortical gray matter volume']
 filenames=['ASEG.csv']
+prepare_csv.delete_specified_columns(folder, filenames, columns)
+
+columns=['Left_hemisphere_cerebral_white_matter_volume', 'Right_hemisphere_cerebral_white_matter_volume', 'Total_cerebral_white_matter_volume']
+filenames=['BRAIN.csv']
 prepare_csv.delete_specified_columns(folder, filenames, columns)
 
 columns=['White_Surface_Total_Area', 'Mean_Thickness']
