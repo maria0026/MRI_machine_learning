@@ -67,15 +67,18 @@ clustered_correlations, selected_featues=dimensions_reduction.cluster_correlatio
 plots.correlation_matrix(clustered_correlations)
 '''
 importance_df=pd.read_csv('results/importance_sex_nn.csv', sep='\t')
-importance_df=pd.read_csv('results/importance_sex_tree.csv', sep='\t')
+importance_df=pd.read_csv('results/importance_sex_forest.csv', sep='\t')
 #plots.component_importance(importance_df, model='Tree')
 
 #age prediction results
 results_nn=pd.read_csv('results/regression_results_nn.csv', sep='\t')
-#plots.age_prediction_function(results_nn, model="Neural Network")
+plots.age_prediction_function(results_nn, model="Neural Network")
 
 results_svm=pd.read_csv('results/regression_results_svm.csv', sep='\t')
-#plots.age_prediction_function(results_svm, model="SVM")
+plots.age_prediction_function(results_svm, model="SVM")
 
-results_tree=pd.read_csv('results/regression_results_tree.csv', sep='\t')
+results_tree=pd.read_csv('results/regression_results_forest.csv', sep='\t')
 plots.age_prediction_function(results_tree, model="Forest")
+
+results_rnn=pd.read_csv('results/regression_results_rnn.csv', sep='\t')
+plots.age_prediction_function(results_rnn, model="RNN")
