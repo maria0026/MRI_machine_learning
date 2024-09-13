@@ -79,24 +79,36 @@ def pca(pca_mri, train_pca, test_pca, X_train, y_train, X_test, y_test):
     plt.show()
 
     
-def scree_plot(pca_mri):
-
+def scree_plot(pca_mri, type='positive'):
     PC_values = np.arange(pca_mri.n_components_) + 1
+    '''
     plt.figure(figsize=(20,10))
     plt.subplot(1, 2, 1)
     plt.plot(PC_values, pca_mri.explained_variance_, 'o-', linewidth=2, color='blue')
     plt.title('Scree Plot')
-    plt.xlabel('Principal Component')
-    plt.ylabel('Variance Explained')
+    plt.xlabel('Principal Component', fontsize=14)
+    plt.ylabel('Variance Explained', fontsize=14)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
 
     plt.subplot(1, 2, 2)
-    plt.plot(PC_values, pca_mri.explained_variance_ratio_, 'o-', linewidth=2, color='blue')
-    plt.title('Scree Plot')
-    plt.xlabel('Principal Component')
-    plt.ylabel('Variance Explained Ratio')
+    plt.plot(PC_values, pca_mri.explained_variance_ratio_, 'o-',  linewidth=2, color='blue')
+    plt.title('Scree Plot', fontsize=16)
+    plt.xlabel('Principal Component', fontsize=16)
+    plt.ylabel('Variance Explained Ratio', fontsize=16)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
     plt.show()
+    '''
 
-
+    plt.plot(PC_values, pca_mri.explained_variance_ratio_, 'o-',  linewidth=2, color='m')
+    plt.title('Scree Plot', fontsize=16)
+    plt.xlabel('Principal Component', fontsize=16)
+    plt.ylabel('Variance Explained Ratio', fontsize=16)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.savefig(f'plots/scree_plot_{type}_dev.png')
+    plt.show()
 
 
 def random_forest(X_train, rf):
@@ -184,7 +196,6 @@ def roc_curve_crossvalid(tprs, fprs, aucs, feature):
     mean_tpr = np.mean(tprs, axis=0)
     mean_tpr[-1] = 1.0
     mean_auc = auc(mean_fpr, mean_tpr)
-    print("srednie pole", mean_auc)
     std_auc = np.std(aucs)
     fig, ax = plt.subplots(figsize=(6, 6))
     ax.plot(
@@ -289,7 +300,7 @@ def age_prediction_function(df, model):
 
     for i in range(len(list_actual)):
         ax = axs[i // 3, i % 3]  # Pobieranie odpowiedniego podwykresu (2x3 layout)
-        ax.plot(df[list_actual[i]], df[list_predicted[i]], 'o')
+        ax.plot(df[list_actual[i]], df[list_predicted[i]], 'o', alpha=0.3, color='green')
         ax.set_xlabel('Actual Age', fontsize=12)
         ax.set_ylabel('Predicted Age', fontsize=12)
         ax.set_title(f'Training {i + 1}', fontsize=14)
@@ -303,7 +314,7 @@ def age_prediction_function(df, model):
     all_predicted=list(all_predicted)
     # Tworzenie figury i osi
     ax=axs[1,2]  
-    ax.plot(all_actual, all_predicted, 'o')
+    ax.plot(all_actual, all_predicted, 'o', alpha=0.2, color='green')
 
     ax.set_xlabel('Actual Age')
     ax.set_ylabel('Predicted Age')
@@ -311,4 +322,5 @@ def age_prediction_function(df, model):
 
 
     fig.tight_layout()  
+    plt.savefig(f'plots/{model}_plot.png')
     plt.show()
