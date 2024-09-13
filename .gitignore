@@ -9,3 +9,6 @@
 *.cfg
 .venv
 results.ipynb
+*.png
+*.txt
+*.tex
