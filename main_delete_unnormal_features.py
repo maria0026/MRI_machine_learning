@@ -21,7 +21,6 @@ print(df)
 
 columns_to_drop=['identifier', 'norm_confirmed', 'sex', 'male', 'female', 'age','Estimated_Total_Intracranial_Volume']
 
-#for sex identyfication
 df_mad, df_outliers= anomalies_detection.test_normality(filename, columns_to_drop)
 df_mad.to_csv(f'results/{type}_outliers_values.csv', sep='\t', index=False)
 df_outliers.to_csv(f'results/{type}_outliers.csv', sep='\t', index=True)

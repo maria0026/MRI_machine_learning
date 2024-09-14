@@ -1,11 +1,11 @@
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import roc_curve, auc
 from torch import nn
 import argparse
 
 from utils import dimensions_reduction, prepare_dataset, plots, train, test
+
 
 def main(args):
 
@@ -53,7 +53,6 @@ def main(args):
 
         input_dim = args.components_nr
         loss_fn = nn.BCELoss()
-
 
         if args.model_name=="forest":
             rf=train.random_forest_model(X_train, y_train, *feature)
@@ -123,7 +122,7 @@ def main(args):
     plots.roc_curve_crossvalid(tprs, fprs, aucs, feature)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("simple_example")
+    parser = argparse.ArgumentParser("parser for sex preidction")
     parser.add_argument("--model_name", nargs="?", default="rnn", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)

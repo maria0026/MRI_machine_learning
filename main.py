@@ -60,9 +60,9 @@ print(selected_features)
 #wyswietlenie korelacji
 correlations=pd.read_csv('data/correlation_matrices/all_concatenated_correlation_matrix.csv', sep='\t', index_col=0)
 correlations=correlations.iloc[:50,:50]
-#plots.correlation_matrix(correlations)
-#clustered_correlations, selected_featues=dimensions_reduction.cluster_correlations(correlations)
-#plots.correlation_matrix(clustered_correlations)
+plots.correlation_matrix(correlations)
+clustered_correlations, selected_featues=dimensions_reduction.cluster_correlations(correlations)
+plots.correlation_matrix(clustered_correlations)
 
 
 importance_df=pd.read_csv('results/importance_sex_nn.csv', sep='\t')
@@ -71,7 +71,7 @@ importance_df=pd.read_csv('results/importance_sex_forest.csv', sep='\t')
 
 #age prediction results
 results_nn=pd.read_csv('results/regression_results_nn.csv', sep='\t')
-plots.age_prediction_function(results_nn, model="Neural Network")
+plots.age_prediction_function(results_nn, model="FNN")
 
 results_svm=pd.read_csv('results/regression_results_svm.csv', sep='\t')
 plots.age_prediction_function(results_svm, model="SVM")

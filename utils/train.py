@@ -100,7 +100,7 @@ def layer_neural_network(X_train, y_train, input_dim, hidden_dim, output_dim, le
 
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)    
     loss_values = []
-
+    model.train()
     for epoch in range(num_epochs):
         for X, y in train_dataloader:
             # zero the parameter gradients

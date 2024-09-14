@@ -9,7 +9,7 @@ class NeuralNetwork(nn.Module):
         nn.init.kaiming_uniform_(self.layer_1.weight, nonlinearity="relu")
         self.layer_2 = nn.Linear(hidden_dim*2, hidden_dim)
         nn.init.kaiming_uniform_(self.layer_2.weight, nonlinearity="relu")
-        self.dropout = nn.Dropout(0.5)
+        self.dropout = nn.Dropout(0.4)
         self.layer_3 = nn.Linear(hidden_dim, hidden_dim//2)
         nn.init.kaiming_uniform_(self.layer_3.weight, nonlinearity="relu")
         self.output_layer = nn.Linear(hidden_dim//2, output_dim)

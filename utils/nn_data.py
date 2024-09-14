@@ -16,7 +16,7 @@ class Data(Dataset):
         return self.len
     
 class DataRNN(Dataset):
-    def __init__(self, X, y, sequence_length=1):
+    def __init__(self, X, y, sequence_length):
         # Reshape X to include the sequence dimension if necessary
         if len(X.shape) == 2:  # Check if X is 2D and needs a third dimension
             input_size = X.shape[1]
@@ -33,6 +33,7 @@ class DataRNN(Dataset):
     def __len__(self):
         return self.len
 
+#to na razie nieużywane
 class DataRNN_binary(Dataset):
     def __init__(self, X, y, sequence_length=1):
         # Reshape X to include the sequence dimension if necessary

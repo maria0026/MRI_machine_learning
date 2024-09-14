@@ -19,10 +19,10 @@ def detele_unnormal_columns(folder, folder_out, df_outliers):
         df.to_csv(f'{folder_out}/{file}', sep='\t', index=False)
 
     
-def split_dataset(df, label_names):
+def split_dataset(df,label_names, test_size=0.2):
     X=df.drop(columns=label_names)
     y=df[label_names]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
 
     return X_train, X_test, y_train, y_test
 

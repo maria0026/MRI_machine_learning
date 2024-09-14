@@ -32,7 +32,7 @@ def test_normality(filename, columns_to_drop):
         
         #sum number of 1 in column
         outliers_number=df_outliers[column].sum()
-        
+        #wybranie nieoutlierów
         data=data[df_outliers[column]==0]
 
         #stat, p_after = shapiro(data)
@@ -46,8 +46,8 @@ def test_normality(filename, columns_to_drop):
         mad_values[column]=[median, mad, outliers_number, p, p_after, wynik]
 
     df_mad = pd.DataFrame(mad_values)
-
     df_mad.insert(0, 'name', ['median', 'mad', 'outliers_number', 'p', 'p_after', 'wynik testu'])
+    
     return df_mad, df_outliers
 
     

@@ -89,11 +89,8 @@ def cluster_correlations(correlations):
         else:
             df_to_append = pd.DataFrame(correlations[i])
             clustered = pd.concat([clustered, df_to_append], axis=1)
-
-
     
     correlations = clustered.corr()
-
 
     return correlations, selected_features
 
