@@ -4,11 +4,14 @@ from torch import nn
 import argparse
 from utils import dimensions_reduction, prepare_dataset, plots, train, test
 
-
 def main(args):
 
     df=pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
     df=df.drop(columns=args.columns_to_drop)
+
+    df_test=pd.read_csv(f'data/{args.test_data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
+    df_test=df_test.drop(columns=args.columns_to_drop)
+
     column_to_copy='male'
     mses, rmses, maes =[], [], []
     input_dim = args.components_nr
@@ -16,7 +19,10 @@ def main(args):
 
 
     for i in range(args.n_crosval):
-        prepare_dataset.divide_by_total_volume(df)
+        if args.division_by_total_volume:
+            prepare_dataset.divide_by_total_volume(df)
+            prepare_dataset.divide_by_total_volume(df_test)
+
         X_train, X_test, y_train, y_test=prepare_dataset.split_dataset(df, args.label_names)
         X_train_to_stardarize=X_train.drop(columns=column_to_copy)
         X_test_to_stardarize=X_test.drop(columns=column_to_copy)
@@ -36,43 +42,29 @@ def main(args):
         test_principal_Df = pd.DataFrame(data = test_pca
                     , columns = [str(i) for i in range(1,test_pca.shape[1]+1)], index=X_test.index)
 
+        if args.sex_subset=='all':
+            X_train=train_principal_Df
+            X_test=test_principal_Df 
 
-        '''
-        #2 osobne modele- dla mężczyzn i kobiet
+        elif args.sex_subset=='male':
+            train_indices=(X_train[X_train['male']==1]).index.tolist()
+            test_indices=(X_test[X_test['male']==1]).index.tolist()
 
-        X_train_male=train_principal_Df[train_principal_Df['male']==1]
-        train_indices=X_train_male.index.tolist()
-        y_train_male=y_train.loc[train_indices]
-
-        X_test_male=test_principal_Df[test_principal_Df['male']==1] 
-        test_indices=X_test_male.index.tolist()
-        y_test_male=y_test.loc[test_indices]
-
-        #female
-        X_train_female=train_principal_Df[train_principal_Df['male']==0]
-        train_indices=X_train_female.index.tolist()
-        y_train_female=y_train.loc[train_indices]
-
-        X_test_female=test_principal_Df[test_principal_Df['male']==0]
-        test_indices=X_test_female.index.tolist()
-        y_test_female=y_test.loc[test_indices]
-        '''
-
-        X_train=train_principal_Df
-        X_test=test_principal_Df 
-
-        '''
-        X_train=X_train_male
-        y_train=y_train_male
-        X_test=X_test_male
-        y_test=y_test_male
+            X_train=train_principal_Df.loc[train_indices]
+            y_train=y_train.loc[train_indices]
+            X_test=test_principal_Df.loc[test_indices]
+            y_test=y_test.loc[test_indices]
 
 
-        X_train=X_train_female
-        y_train=y_train_female
-        X_test=X_test_female
-        y_test=y_test_female
-        '''
+        elif args.sex_subset=='female':
+            train_indices=(X_train[X_train['male']==0]).index.tolist()
+            test_indices=(X_test[X_test['male']==0]).index.tolist()
+
+            X_train=train_principal_Df.loc[train_indices]
+            y_train=y_train.loc[train_indices]
+            X_test=test_principal_Df.loc[test_indices]
+            y_test=y_test.loc[test_indices]
+  
 
         feature=args.label_names
         print("Odchylenie",np.std(y_train[feature[0]]))
@@ -108,8 +100,8 @@ def main(args):
         elif args.model_name=='rnn':
             y_train=y_train/100
             y_test=y_test/100
-            model=train.recurrent_neural_network(X_train, y_train, args.seq_dim, input_dim, args.rnn_hidden_dim, args.layer_dim, args.output_dim, args.rnn_learning_rate, loss_fn, args.num_epochs, args.rnn_weight_decay)
-            mse, rmse, mae, results_df=test.recurrent_neural_network_regression(X_test, y_test, args.seq_dim, input_dim, model)
+            model=train.recurrent_neural_network(X_train, y_train, args.rnn_seq_dim, input_dim, args.rnn_hidden_dim, args.rnn_layer_dim, args.output_dim, args.rnn_learning_rate, loss_fn, args.num_epochs, args.rnn_weight_decay)
+            mse, rmse, mae, results_df=test.recurrent_neural_network_regression(X_test, y_test, args.rnn_seq_dim, input_dim, model)
         
 
         if args.model_name!='nn':
@@ -117,7 +109,6 @@ def main(args):
                 importance_df.to_csv(f'{args.results_directory}/importance_age_{args.model_name}.csv', sep='\t')
                 results_df.to_csv(f'{args.results_directory}/regression_results_{args.model_name}.csv', sep='\t')
             else:
-                #concatenate
                 importance_df_old=pd.read_csv(f'{args.results_directory}/importance_age_{args.model_name}.csv', sep='\t', index_col=0)
                 importance_df=pd.concat([importance_df_old, importance_df], axis=1)
                 importance_df.to_csv(f'{args.results_directory}/importance_age_{args.model_name}.csv', sep='\t', index=True)
@@ -158,6 +149,7 @@ if __name__ == "__main__":
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="positive", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--sex_subset", nargs="?", default="all", help="Choose the sex subset: all/female/male", type=str)
     parser.add_argument("--division_by_total_volume", nargs="?", default=True, help="Divide volumetric data by Estimated_Total_Intracranial_Volume", type=bool)
     parser.add_argument("--n_most_important_features", nargs="?", default=20, help="Choose the number of extracting features that load into components")
     parser.add_argument("--components_nr", nargs="?", default=35, help="Number of components for principal component analysis", type=int)
