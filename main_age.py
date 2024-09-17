@@ -20,8 +20,8 @@ def main(args):
 
     for i in range(args.n_crosval):
         if args.division_by_total_volume:
-            prepare_dataset.divide_by_total_volume(df)
-            prepare_dataset.divide_by_total_volume(df_test)
+            df=prepare_dataset.divide_by_total_volume(df)
+            df_test=prepare_dataset.divide_by_total_volume(df_test)
 
         X_train, X_test, y_train, y_test=prepare_dataset.split_dataset(df, args.label_names)
         X_train_to_stardarize=X_train.drop(columns=column_to_copy)
