@@ -16,6 +16,8 @@ def detele_unnormal_columns(folder, folder_out, df_outliers):
                     columns_to_drop.append(column)
         df=df.drop(columns=columns_to_drop)
         df=df.dropna(axis=1, how='all')
+        if not os.path.exists(folder_out):
+            os.makedirs(folder_out)
         df.to_csv(f'{folder_out}/{file}', sep='\t', index=False)
 
     
