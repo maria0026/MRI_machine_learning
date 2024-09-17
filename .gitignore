@@ -6,8 +6,8 @@
 *.m
 *.pdf
 *.gv
+*.venv
 *.cfg
-.venv
 results.ipynb
 *.png
 *.txt
