@@ -1,58 +1,52 @@
 from utils import prepare_csv
+import argparse
+import os
 
-def main():
-    norm_confimed=3
+def main(args):
 
-    if norm_confimed==1:
-        type='positive'
-    elif norm_confimed==0:
-        type='negative'
-    else:
-        type='all'
+    subjects_path = os.path.join(args.path, 'Subjects.csv')
+    prepare_csv.replace_comma_with_dot(subjects_path)
+    prepare_csv.convert_delimiter(args.path, args.delimiter, args.old_delimiter, args.old_delimiter_2)
+    prepare_csv.convert_line_endings(args.path)
 
-    folder_out=f'data/{type}_norm_confirmed'
+    if args.data_type=="positive":
+        norm_confimed=1
+    elif args.data_type=="negative":
+        norm_confimed=0
+    elif args.data_type=="all":
+        norm_confimed=3
 
-
-    path = 'data/original/Subjects.csv'
-    prepare_csv.replace_comma_with_dot(path)
-
-    folder='data/original'
-    old_delimiter = ','
-    old_delimiter_2 = ';'
-    delimiter = '\t'
-
-    prepare_csv.convert_delimiter(folder, delimiter, old_delimiter, old_delimiter_2)
-    prepare_csv.convert_line_endings(folder)
+    #deleting duplicated columns
     columns=['Brain_Segmentation_Volume','Brain_Segmentation_Volume_Without_Ventricles','Brain_Segmentation_Volume_Without_Ventricles_from_Surf','Total_cortical_gray_matter_volume','Supratentorial_volume','Supratentorial_volume.1', 'Estimated_Total_Intracranial_Volume','Brain Segmentation Volume',	'Brain Segmentation Volume Without Ventricles']
     #z wszystkich oprócz 1
     filenames=['LHA2009.csv', 'LHAPARC.csv', 'LHDKT.csv', 'RHA2009.csv', 'RHAPARC.csv','ASEG.csv', 'BRAIN.csv', 'WM.csv']
-    prepare_csv.delete_specified_columns(folder, filenames, columns)
+    prepare_csv.delete_specified_columns(args.path, filenames, columns)
 
     columns=['White_Surface_Total_Area', 'Mean_Thickness']
     filenames=['LHA2009.csv', 'LHAPARC.csv', 'RHA2009.csv', 'RHAPARC.csv']
-    prepare_csv.delete_specified_columns(folder, filenames, columns)
+    prepare_csv.delete_specified_columns(args.path, filenames, columns)
 
     columns=[ 'Left hemisphere cortical gray matter volume', 'Right hemisphere cortical gray matter volume','ASEG-Left hemisphere cerebral white matter volume','ASEG-Right hemisphere cerebral white matter volume', 'ASEG-Total cerebral white matter volume','ASEG-Subcortical gray matter volume', 'ASEG-Total gray matter volume', 'ASEG-Supratentorial volume', 'ASEG-Mask Volume', 'ASEG-Supratentorial volume_notvent']
     filenames=['ASEG.csv']
-    prepare_csv.delete_specified_columns(folder, filenames, columns)
+    prepare_csv.delete_specified_columns(args.path, filenames, columns)
 
     columns=['Total_cerebral_white_matter_volume', 'Volume of ventricles and choroid plexus', 'Left_hemisphere_cerebral_white_matter_volume', 'Right_hemisphere_cerebral_white_matter_volume']
     filenames=['BRAIN.csv']
-    prepare_csv.delete_specified_columns(folder, filenames, columns)
+    prepare_csv.delete_specified_columns(args.path, filenames, columns)
 
+    #for those files where these columms are, we add hemisphere name
     columns=['White_Surface_Total_Area', 'Mean_Thickness']
     filenames=['LHDKT.csv', 'RHDKT.csv']
-    prepare_csv.add_hemisphere_name(folder, filenames, columns)
-
-    #uwuwanie duplikatów subjectów, brakujących danych i danych z norm_confirmed=0 na podstwaie Subjects.csv
-    filename='Subjects.csv'
-    indexes=prepare_csv.get_indexes_for_cleaning_dataset(folder, filename, data_files=False, norm_confirmed=norm_confimed)
+    prepare_csv.add_hemisphere_name(args.path, filenames, columns)
 
 
+    #searching for indexes of subjects with missing data, duplicates and norm_confired subset
+    indexes=prepare_csv.get_indexes_for_cleaning_dataset(filepath=subjects_path, data_files=False, norm_confirmed=norm_confimed)
     filenames = ['WM.csv', 'ASEG.csv', 'BRAIN.csv', 'LHA2009.csv', 'LHAPARC.csv', 'LHDKT.csv', 'RHA2009.csv', 'RHAPARC.csv', 'RHDKT.csv']
 
     for filename in filenames:
-        indexes_df=prepare_csv.get_indexes_for_cleaning_dataset(folder,filename, data_files=True, norm_confirmed=norm_confimed)
+        filepath = os.path.join(args.path, filename)
+        indexes_df=prepare_csv.get_indexes_for_cleaning_dataset(filepath=filepath, data_files=True, norm_confirmed=norm_confimed)
         if len(indexes_df)>0:
             indexes.append(indexes_df)
         else:
@@ -62,13 +56,23 @@ def main():
     indexes = list(set(indexes))
     print("ilosc", len(indexes))
 
-    #czyszczenie danych
-    prepare_csv.clean_datasets(indexes, folder, folder_out)
+    #clean the data based on indexes
+    folder_out=f'data/{args.data_type}_norm_confirmed'
+    prepare_csv.clean_datasets(indexes, args.path, folder_out)
 
     folder_name=folder_out
     prepare_csv.convert_line_endings(folder_name)
+    #we get "all_contatenated.csv" file
     prepare_csv.concatenate_datasets(folder_name)
 
 if __name__ == "__main__":
-
-    main()
+    parser = argparse.ArgumentParser("parser for deleting unnormal features")
+    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all/None, choose None if you don't want to test on the different dataset", type=str)
+    parser.add_argument("--columns_to_drop", nargs="?", default=['identifier', 'norm_confirmed', 'sex', 'male', 'female', 'age','Estimated_Total_Intracranial_Volume'], help="Columns to drop", type=list)
+    parser.add_argument("--path", nargs="?", default="data/original", help="Path to the folder where the original files are", type=str)
+    parser.add_argument("old_delimiter", nargs="?", default=",", help="Old delimiter", type=str)
+    parser.add_argument("old_delimiter_2", nargs="?", default=";", help="Old delimiter", type=str)
+    parser.add_argument("delimiter", nargs="?", default="\t", help="New delimiter", type=str)
+    args = parser.parse_args()
+    main(args)
