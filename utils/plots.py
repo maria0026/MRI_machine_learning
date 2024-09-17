@@ -79,7 +79,7 @@ def pca(pca_mri, train_pca, test_pca, X_train, y_train, X_test, y_test):
     plt.show()
 
     
-def scree_plot(pca_mri, type='positive'):
+def scree_plot(pca_mri, type='positive', dev=False):
     PC_values = np.arange(pca_mri.n_components_) + 1
     '''
     plt.figure(figsize=(20,10))
@@ -100,14 +100,19 @@ def scree_plot(pca_mri, type='positive'):
     plt.yticks(fontsize=12)
     plt.show()
     '''
-
+    import matplotlib
+    print(matplotlib.__version__)
+    plt.style.use('default')
     plt.plot(PC_values, pca_mri.explained_variance_ratio_, 'o-',  linewidth=2, color='m')
     plt.title('Scree Plot', fontsize=16)
     plt.xlabel('Principal Component', fontsize=16)
     plt.ylabel('Variance Explained Ratio', fontsize=16)
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
-    plt.savefig(f'plots/scree_plot_{type}_dev.png')
+    if dev:
+        plt.savefig(f'plots/scree_plot_{type}_dev.png')
+    else:
+        plt.savefig(f'plots/scree_plot_{type}.png')
     plt.show()
 
 
