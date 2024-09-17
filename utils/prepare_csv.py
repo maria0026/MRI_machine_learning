@@ -121,10 +121,9 @@ def convert_line_endings(folder):
 
 
 
-def get_indexes_for_cleaning_dataset(folder, filename, data_files=True, norm_confirmed=1):
+def get_indexes_for_cleaning_dataset(filepath, data_files=True, norm_confirmed=1):
 
-    filename= os.path.join(folder, filename)
-    df = pd.read_csv(filename, sep='\t')
+    df = pd.read_csv(filepath, sep='\t')
     
     df.columns = df.columns.str.strip()  # Usuwa nadmiarowe białe znaki
     if data_files==True:
@@ -176,6 +175,9 @@ def clean_datasets(indexes_to_drop, folder, folder_out):
         print("rozmiar",df.shape)
         #save df to csv with delimiter ;
         df=df.dropna(axis=1, how='all')
+        #check if folder_out exists
+        if not os.path.exists(folder_out):
+            os.makedirs(folder_out)
         df.to_csv(f'{folder_out}/{filename}', sep="\t", index=False)
 
 
