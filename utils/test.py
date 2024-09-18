@@ -17,70 +17,48 @@ from torch.autograd import Variable
 import shap
 
 def random_forest_model(X_test, y_test, feature, rf):
-    
-    # Create a variable for the best model
-    best_rf = rf.best_estimator_
-
-    # Print the best hyperparameters
     print('Best hyperparameters:',  rf.best_params_)
 
     y_pred = rf.predict(X_test)
+
     accuracy = accuracy_score(y_test[feature], y_pred)
     precision = precision_score(y_test[feature], y_pred)
     recall = recall_score(y_test[feature], y_pred)
-
-
-    # Create the confusion matrix
     cm = confusion_matrix(y_test[feature], y_pred)
 
     #roc curve
     y_pred_proba = rf.predict_proba(X_test)[:, 1]
     fpr, tpr, thresholds = roc_curve(y_test[feature], y_pred_proba) 
     
-
     return accuracy, precision, recall, cm, fpr, tpr
 
+
 def random_forest_regression_model(X_test, y_test, feature, rf):
-
-    # Create a variable for the best model
-    best_rf = rf.best_estimator_
-
-    # Print the best hyperparameters
     print('Best hyperparameters:',  rf.best_params_)
 
     y_pred = rf.predict(X_test)
-    #export y_test and y_pred to df and then to csv
-    print(y_test[feature].shape, y_pred.shape)
-    # Make sure y_test[feature] and y_pred are aligned
-    results_df = pd.DataFrame({
-        'Actual': y_test[feature].values,  # Convert to NumPy array if it's not already
-        'Predicted': y_pred
-    })
     
     mse=mean_squared_error(y_test[feature], y_pred)
     rmse = float(format(np.sqrt(mean_squared_error(y_test[feature], y_pred)), '.3f'))
-
-    #mean average error
     mae = mean_absolute_error(y_test[feature], y_pred)
+
+    print(y_test.shape, y_pred.shape)
+    results_df = pd.DataFrame({
+        'Actual': y_test[feature].values.flatten(), 
+        'Predicted': y_pred.flatten()
+    })
 
     return mse, rmse, mae, results_df
 
+
 def svm_classification_model(X_test, y_test, clf):
-
-    # Create a variable for the best model
-    best_rf = clf.best_estimator_
-
-    # Print the best hyperparameters
     print('Best hyperparameters:',  clf.best_params_)
 
-
-    #Predict the response for test dataset
     y_pred = clf.predict(X_test)
+
     accuracy = accuracy_score(y_test, y_pred)
     precision = precision_score(y_test, y_pred)
     recall = recall_score(y_test, y_pred)
-
-    # Create the confusion matrix
     cm = confusion_matrix(y_test, y_pred)
 
     #roc curve
@@ -90,43 +68,30 @@ def svm_classification_model(X_test, y_test, clf):
 
     return accuracy, precision, recall, cm, fpr, tpr
 
+
 def svm_regression_model(X_test, y_test, clf):
-
-    # Create a variable for the best model
-    best_rf = clf.best_estimator_
-
-    # Print the best hyperparameters
     print('Best hyperparameters:',  clf.best_params_)
 
-
-    #Predict the response for test dataset
     y_pred = clf.predict(X_test)
 
-    y_pred_flat = y_pred 
-    y_test_flat = y_test.values.ravel() 
-
-    # Make sure y_test[feature] and y_pred are aligned
-    results_df = pd.DataFrame({
-        'Actual': y_test_flat,  # Convert to NumPy array if it's not already
-        'Predicted': y_pred_flat
-    })
-    
-    #results_df.to_csv('results/regression_results_svm.csv', sep='\t')
-    
     mse=mean_squared_error(y_test, y_pred)
     rmse = float(format(np.sqrt(mean_squared_error(y_test, y_pred)), '.3f'))
-
-    #mean average error
     mae = mean_absolute_error(y_test, y_pred)
 
+    y_test_flat = y_test.values.ravel() 
+    results_df = pd.DataFrame({
+        'Actual': y_test_flat,  
+        'Predicted': y_pred
+    })
+    
     return mse, rmse, mae, results_df
+
 
 class SklearnPyTorchWrapper(BaseEstimator, ClassifierMixin):
     def __init__(self, model):
         self.model = model
     
     def fit(self, X, y):
-        # Since the model is already trained, no fitting is needed here.
         return self
     
     def predict(self, X):
@@ -145,50 +110,42 @@ class SklearnPyTorchWrapper(BaseEstimator, ClassifierMixin):
             outputs = self.model(X_tensor)
         return np.vstack([1 - outputs.numpy().flatten(), outputs.numpy().flatten()]).T
 
-def neural_network_classification(X_test, y_test, model):
 
-    batch_size = 64
+def neural_network_classification(X_test, y_test, batch_size, model):
     test_data =nn_data.Data(X_test, y_test)
     test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
-    total=0
-    correct=0
+    y_test_flat= y_test.values.ravel()
     FPR=0
-    y_test_flat = y_test.values.ravel()
-
     y_pred = []
+    y_pred_prob = []
     y_test = []
+
     model.eval()
     with torch.no_grad():
         for X, y in test_dataloader:
             outputs = model(X)
-            #Spłaszczenie
             predicted = np.where(outputs.view(-1).numpy() < 0.5, 0, 1)
             y = y.view(-1).numpy()
-
             y_pred.append(predicted)
+            y_pred_prob.append(outputs.view(-1).numpy())
             y_test.append(y)
-            
-            total += y.size
-            correct += (predicted == y).sum()
-
-
-    #print(f'Accuracy of the network: {100* correct // total}%')
 
     y_pred = list(itertools.chain(*y_pred))
+    y_pred_prob = list(itertools.chain(*y_pred_prob))
     y_test = list(itertools.chain(*y_test))
     
     y_pred = np.array(y_pred).flatten()
+    y_pred_prob = np.array(y_pred_prob).flatten()
     y_test = np.array(y_test).flatten()
 
-    accuracy = accuracy_score(y_test, (y_pred > 0.5).astype(int))
-    precision = precision_score(y_test, (y_pred > 0.5).astype(int))
-    recall = recall_score(y_test, (y_pred > 0.5).astype(int))
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
 
-    TP = np.sum((y_test == 1) & (y_pred > 0.5))
-    TN = np.sum((y_test == 0) & (y_pred <= 0.5))
-    FP = np.sum((y_test == 0) & (y_pred > 0.5))
-    FN = np.sum((y_test == 1) & (y_pred <= 0.5))
-
+    TP = np.sum((y_test == 1) & (y_pred == 1))
+    TN = np.sum((y_test == 0) & (y_pred == 0))
+    FP = np.sum((y_test == 0) & (y_pred == 1))
+    FN = np.sum((y_test == 1) & (y_pred == 0))
 
     if FP + TN > 0:
         FPR = FP / (FP + TN)
@@ -196,7 +153,7 @@ def neural_network_classification(X_test, y_test, model):
         FPR = 0 
 
     #roc curve
-    fpr, tpr, thresholds = roc_curve(y_test, y_pred) 
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob) 
     cf_matrix = confusion_matrix(y_test, y_pred>0.5)
 
     # Wrap the model with the scikit-learn wrapper
@@ -213,14 +170,13 @@ def neural_network_classification(X_test, y_test, model):
 
     return accuracy, precision, recall, FPR, cf_matrix, fpr, tpr, df_fi
 
-def neural_network_regression(X_test, y_test, model):
-
-    batch_size = 64
-    test_data =nn_data.DataRNN(X_test, y_test)
+def neural_network_regression(X_test, y_test, batch_size, model):
+    test_data =nn_data.Data(X_test, y_test)
     test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
 
     y_pred = []
     y_test = []
+
     model.eval()
     with torch.no_grad():
         for X, y in test_dataloader:
@@ -241,8 +197,6 @@ def neural_network_regression(X_test, y_test, model):
     
     mse=mean_squared_error(y_test_flat, y_pred_flat)
     rmse = float(format(np.sqrt(mean_squared_error(y_test_flat, y_pred_flat)), '.3f'))
-
-    #mean average error
     mae = mean_absolute_error(y_test_flat, y_pred_flat)
 
     #feature_importance
@@ -259,23 +213,18 @@ def neural_network_regression(X_test, y_test, model):
 
     return mse, rmse, mae, y_pred_df, df_fi
 
-def recurrent_neural_network_classification(X_test, y_test, seq_dim, input_dim, model):
-    
-    batch_size = 64
+def recurrent_neural_network_classification(X_test, y_test, batch_size, seq_dim, input_dim, model):
     test_data =nn_data.DataRNN(X_test, y_test, sequence_length=seq_dim)
     test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
-    
 
     y_pred = []
     y_test = []
+
     model.eval()
-    # Iterate through test dataset
-    for images, y in test_dataloader:
-        images = Variable(images.view(-1, seq_dim, input_dim))
+    for features, y in test_dataloader:
+        features = Variable(features.view(-1, seq_dim, input_dim))
         
-        # Forward propagation
-        outputs = model(images)
-        
+        outputs = model(features)
         predicted = outputs.view(-1).detach().numpy()
         # Konwersja y do płaskiej postaci
         y_pred.append(predicted)
@@ -309,25 +258,21 @@ def recurrent_neural_network_classification(X_test, y_test, seq_dim, input_dim, 
     fpr, tpr, thresholds = roc_curve(y_test_flat, y_pred_flat) 
     cf_matrix = confusion_matrix(y_test_flat, y_pred_flat>0.5)
     
-
     return accuracy, precision, recall, FPR, cf_matrix, fpr, tpr
 
-def recurrent_neural_network_regression(X_test, y_test, seq_dim, input_dim, model):
-    
-    batch_size = 64
+
+def recurrent_neural_network_regression(X_test, y_test, batch_size, seq_dim, input_dim, model):
     test_data =nn_data.DataRNN(X_test, y_test, sequence_length=seq_dim)
     test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
     
     y_pred = []
     y_test = []
-    # Iterate through test dataset
+
     model.eval()
-    for images, y in test_dataloader:
-        images = Variable(images.view(-1, seq_dim, input_dim))
+    for features, y in test_dataloader:
+        features = Variable(features.view(-1, seq_dim, input_dim))
         
-        # Forward propagation
-        outputs = model(images)
-        
+        outputs = model(features)
         predicted = outputs.view(-1).detach().numpy()
         # Konwersja y do płaskiej postaci
         y = y.view(-1).numpy()
