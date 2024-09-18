@@ -5,13 +5,16 @@ import argparse
 
 def main(args):
 
+    data_preprocessor = prepare_dataset.DatasetPreprocessor()
+    anomalies_detector = anomalies_detection.AnomaliesDetector()
+
     filename=f'data/{args.data_type}_norm_confirmed/all_concatenated.csv'
     df=pd.read_csv(filename, sep='\t')
     print(df)
     #plots.plot_some_data(df)
 
     #searching for unnormal columns
-    df_normality_scores, df_outliers = anomalies_detection.test_normality(filename, args.columns_to_drop)
+    df_normality_scores, df_outliers = anomalies_detector.test_normality(filename, args.columns_to_drop)
     df_normality_scores.to_csv(f'results/{args.data_type}_outliers_values.csv', sep='\t', index=True)
     df_outliers.to_csv(f'results/{args.data_type}_outliers.csv', sep='\t', index=True)
     print(df_normality_scores)
@@ -21,13 +24,13 @@ def main(args):
     #delete unnormal columns
     folder=f'data/{args.data_type}_norm_confirmed'
     folder_out=f'data/{args.data_type}_norm_confirmed_normal'
-    prepare_dataset.detele_unnormal_columns(folder, folder_out, df_normality_scores)
+    data_preprocessor.detele_unnormal_columns(folder, folder_out, df_normality_scores)
 
     #we sometimes want to test our model on the different dataset
     if args.test_data_type!="None":
         folder=f'data/{args.test_data_type}_norm_confirmed'
         folder_out=f'data/{args.test_data_type}_norm_confirmed_normal'
-        prepare_dataset.detele_unnormal_columns(folder, folder_out, df_normality_scores)
+        data_preprocessor.detele_unnormal_columns(folder, folder_out, df_normality_scores)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("parser for deleting unnormal features")
