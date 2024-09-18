@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 
 
@@ -32,6 +33,18 @@ class DataRNN(Dataset):
    
     def __len__(self):
         return self.len
+
+def load_fnn_data(X, y, batch_size):
+    train_data = Data(X, y)
+    train_dataloader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
+
+    return train_dataloader
+
+def load_rnn_data(X, y, batch_size):
+    train_data = DataRNN(X, y, sequence_length=1)
+    train_dataloader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
+
+    return train_dataloader
 
 #to na razie nieużywane
 class DataRNN_binary(Dataset):
