@@ -1,5 +1,5 @@
 # MRI_machine_learning
-File Structure
+# File Structure
 
 The project folder contains four main scripts with "main" in their names, where the main logic of the program is executed. These files import scripts from the 'utils' folder. The argparser with default arguments is used in all four scripts. In all four scripts, there is a data_type argument, which is used to select data based on the norm_confirmed column: "positive" for only 1, "negative" for only 0, and "all" values.
 
@@ -15,7 +15,7 @@ The project folder contains four main scripts with "main" in their names, where 
 
 The scripts should be run after activating the virtual environment with source .venv/bin/activate due to specific versions of imported libraries.
 
-Library versions:
+# Library versions:
 
     numpy 1.26.4
     scipy 1.13.1
