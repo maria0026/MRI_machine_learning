@@ -5,7 +5,7 @@ import argparse
 
 def main(args):
 
-    data_preprocessor = prepare_dataset.DatasetPreprocessor()
+    preprocessor = prepare_dataset.DatasetPreprocessor()
     anomalies_detector = anomalies_detection.AnomaliesDetector()
 
     filename=f'data/{args.data_type}_norm_confirmed/all_concatenated.csv'
@@ -24,13 +24,13 @@ def main(args):
     #delete unnormal columns
     folder=f'data/{args.data_type}_norm_confirmed'
     folder_out=f'data/{args.data_type}_norm_confirmed_normal'
-    data_preprocessor.detele_unnormal_columns(folder, folder_out, df_normality_scores)
+    preprocessor.detele_unnormal_columns(folder, folder_out, df_normality_scores)
 
     #we sometimes want to test our model on the different dataset
     if args.test_data_type!="None":
         folder=f'data/{args.test_data_type}_norm_confirmed'
         folder_out=f'data/{args.test_data_type}_norm_confirmed_normal'
-        data_preprocessor.detele_unnormal_columns(folder, folder_out, df_normality_scores)
+        preprocessor.detele_unnormal_columns(folder, folder_out, df_normality_scores)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("parser for deleting unnormal features")
