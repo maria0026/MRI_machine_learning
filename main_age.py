@@ -7,8 +7,8 @@ from utils import dimensions_reduction, prepare_dataset, plots, train, test, nn_
 
 def main(args):
 
-    DataPreprocessor = prepare_dataset.DatasetPreprocessor()
-    DimensionsReductor = dimensions_reduction.DimensionsReductor()
+    preprocessor = prepare_dataset.DatasetPreprocessor()
+    reductor = dimensions_reduction.DimensionsReductor()
 
     df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
     df = df.drop(columns=args.columns_to_drop)
@@ -24,18 +24,18 @@ def main(args):
 
     for i in range(args.n_crosval):
         if args.division_by_total_volume:
-            df = DataPreprocessor.divide_by_total_volume(df)
-            df_test = DataPreprocessor.divide_by_total_volume(df_test)
+            df = preprocessor.divide_by_total_volume(df)
+            df_test = preprocessor.divide_by_total_volume(df_test)
 
-        X_train, X_test, y_train, y_test = DataPreprocessor.split_dataset(df, args.label_names)
+        X_train, X_test, y_train, y_test = preprocessor.split_dataset(df, args.label_names)
         X_train_to_stardarize = X_train.drop(columns=column_to_copy)
         X_test_to_stardarize = X_test.drop(columns=column_to_copy)
-        X_train_standarized, X_test_stantarized = DataPreprocessor.standarize_data(X_train_to_stardarize, X_test_to_stardarize)
+        X_train_standarized, X_test_stantarized = preprocessor.standarize_data(X_train_to_stardarize, X_test_to_stardarize)
         X_train = pd.concat([X_train_standarized, X_train[column_to_copy]], axis=1)
         X_test = pd.concat([X_test_stantarized, X_test[column_to_copy]], axis=1)
 
         #PCA
-        pca_mri, train_pca, test_pca, importance_df = DimensionsReductor.principal_component_analysis(X_train, X_test, args.components_nr, args.n_most_important_features)
+        pca_mri, train_pca, test_pca, importance_df = reductor.principal_component_analysis(X_train, X_test, args.components_nr, args.n_most_important_features)
         explained_variance_ratio = pca_mri.explained_variance_ratio_
         formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
         print('Explained variability per principal component: {}'.format(formatted_explained_variance))
