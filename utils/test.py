@@ -9,7 +9,7 @@ import itertools
 from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
-from utils import nn_data
+from utils import nn_data, nn_model
 from eli5.sklearn import PermutationImportance
 import eli5
 from sklearn.base import BaseEstimator, ClassifierMixin
@@ -69,46 +69,53 @@ def svm_classification_model(X_test, y_test, clf):
     return accuracy, precision, recall, cm, fpr, tpr
 
 
-def svm_regression_model(X_test, y_test, clf):
+def svm_regression_model(X_test, y_test, clf, valid=False, z=None, z_quantiles=None, feature=None):
     print('Best hyperparameters:',  clf.best_params_)
 
     y_pred = clf.predict(X_test)
+    #detrend the results
+    if valid==True:
+        y_pred = y_pred - z[0]*y_test.values.ravel()**2 - z[1]*y_test.values.ravel() - z[2] #+ y_test.values.ravel()
 
-    mse=mean_squared_error(y_test, y_pred)
-    rmse = float(format(np.sqrt(mean_squared_error(y_test, y_pred)), '.3f'))
-    mae = mean_absolute_error(y_test, y_pred)
 
-    y_test_flat = y_test.values.ravel() 
+    mse=mean_squared_error(y_test[feature], y_pred)
+    rmse = float(format(np.sqrt(mean_squared_error(y_test[feature], y_pred)), '.3f'))
+    mae = mean_absolute_error(y_test[feature], y_pred)
+
+    y_test_flat = y_test[feature].values.ravel() 
     results_df = pd.DataFrame({
         'Actual': y_test_flat,  
         'Predicted': y_pred
     })
-    
-    return mse, rmse, mae, results_df
 
 
-class SklearnPyTorchWrapper(BaseEstimator, ClassifierMixin):
-    def __init__(self, model):
-        self.model = model
+    for quantile, y_pred_quant in z_quantiles.items():
+        plt.plot(y_test[feature], y_pred_quant[0]*y_test[feature]+y_pred_quant[1], label=f"Quantile: {quantile}")
+
+    plt.plot(y_test[feature], y_pred, 'o', color='b', alpha=0.5, label='Predicted')
+    plt.show()
     
-    def fit(self, X, y):
-        return self
-    
-    def predict(self, X):
-        if isinstance(X, pd.DataFrame):
-            X = X.values
-        X_tensor = torch.tensor(X, dtype=torch.float32)
-        with torch.no_grad():
-            outputs = self.model(X_tensor)
-        return np.where(outputs.numpy().flatten() < 0.5, 0, 1)
-    
-    def predict_proba(self, X):
-        if isinstance(X, pd.DataFrame):
-            X = X.values
-        X_tensor = torch.tensor(X, dtype=torch.float32)
-        with torch.no_grad():
-            outputs = self.model(X_tensor)
-        return np.vstack([1 - outputs.numpy().flatten(), outputs.numpy().flatten()]).T
+    first_quantile=0.01
+    last_quantile=0.99
+    lower_outliers=0
+    upper_outliers=0
+    identifiers=[]
+
+    for i, prediction in enumerate(y_pred):
+        if prediction < float(z_quantiles[first_quantile][0] * np.array(y_test[feature]).flatten()[i] + z_quantiles[first_quantile][1]):
+            lower_outliers += 1
+            identifiers.append(y_test.loc[i, 'identifier'])
+        if prediction > float(z_quantiles[last_quantile][0] * np.array(y_test[feature]).flatten()[i] + z_quantiles[last_quantile][1]):
+            upper_outliers += 1
+            identifiers.append(y_test.loc[i,'identifier'])
+
+    print("Lower outliers:", lower_outliers)
+    print("Upper outliers:", upper_outliers)
+    print("Identifiers of outliers:", identifiers)
+
+
+    return mse, rmse, mae, results_df, identifiers
+
 
 
 def neural_network_classification(X_test, y_test, batch_size, model):
@@ -157,7 +164,7 @@ def neural_network_classification(X_test, y_test, batch_size, model):
     cf_matrix = confusion_matrix(y_test, y_pred>0.5)
 
     # Wrap the model with the scikit-learn wrapper
-    sklearn_model = SklearnPyTorchWrapper(model)
+    sklearn_model = nn_model.SklearnPyTorchWrapper(model)
 
     # Feature Importance with eli5
     perm = PermutationImportance(sklearn_model, n_iter=5).fit(X_test, y_test_flat)
@@ -201,7 +208,7 @@ def neural_network_regression(X_test, y_test, batch_size, model):
 
     #feature_importance
     # Wrap the model with the scikit-learn wrapper
-    sklearn_model = SklearnPyTorchWrapper(model)
+    sklearn_model = nn_model.SklearnPyTorchWrapper(model)
 
     # Feature Importance with eli5
     perm = PermutationImportance(sklearn_model, scoring='neg_mean_absolute_error', n_iter=5).fit(X_test, y_test_flat)
