@@ -19,12 +19,14 @@ class DimensionsReductor:
         return important_indices
 
 
-    def principal_component_analysis(self, X_train, X_test, components_nr, n_features=3):
+    def principal_component_analysis(self, X_train, X_test, components_nr, n_features=3, X_val=None, validation=False):
 
         pca_mri = PCA(components_nr)
 
         train_pca = pca_mri.fit_transform(X_train)
         test_pca = pca_mri.transform(X_test)
+        if validation:
+            val_pca = pca_mri.transform(X_val)
 
         explained_variance_ratio=pca_mri.explained_variance_ratio_
         formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
@@ -52,7 +54,10 @@ class DimensionsReductor:
         # Dodanie indeksów jako numerów komponentów
         importance_df.index = range(1, n_pcs + 1)
 
-        return pca_mri, train_pca, test_pca, importance_df
+        if validation:
+            return pca_mri, train_pca, val_pca, test_pca,  importance_df
+
+        return pca_mri, train_pca, None, test_pca, importance_df
 
     def calculate_correlation_matrices(self, folder, folder_out):
         files=os.listdir(folder)
