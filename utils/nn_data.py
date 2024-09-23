@@ -34,14 +34,14 @@ class DataRNN(Dataset):
     def __len__(self):
         return self.len
 
-def load_fnn_data(X, y, batch_size):
-    train_data = Data(X, y)
+def load_fnn_data(X, y, batch_size, feature):
+    train_data = Data(X, y[feature])
     train_dataloader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
 
     return train_dataloader
 
-def load_rnn_data(X, y, batch_size):
-    train_data = DataRNN(X, y, sequence_length=1)
+def load_rnn_data(X, y, batch_size, feature):
+    train_data = DataRNN(X, y[feature], sequence_length=1)
     train_dataloader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
 
     return train_dataloader
