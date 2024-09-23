@@ -25,21 +25,34 @@ class DatasetPreprocessor:
             df.to_csv(f'{folder_out}/{file}', sep='\t', index=False)
 
         
-    def split_dataset(self, df,label_names, test_size=0.2):
+    def split_dataset(self, df, label_names, test_size=0.2, valid=False):
         X=df.drop(columns=label_names)
         y=df[label_names]
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+        
+        if valid:
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+            X_train, X_val, y_train, y_val = train_test_split(X_test, y_test, test_size=0.5)
 
-        return X_train, X_test, y_train, y_test
+            return X_train, X_val, X_test, y_train, y_val, y_test 
+        else:
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+            X_val, y_val = None, None
 
-    def standarize_data(self, X_train, X_test):
+            return X_train, X_val, X_test, y_train, y_val, y_test
+
+    def standarize_data(self, X_train, X_test, valid=False, X_val=None):
         
         sc = StandardScaler()
         X_train_standarized = sc.fit_transform(X_train)
         X_test_standarized = sc.transform(X_test)
         X_train = pd.DataFrame(X_train_standarized, columns=X_train.columns, index=X_train.index)
         X_test = pd.DataFrame(X_test_standarized, columns=X_test.columns, index=X_test.index)
-        return X_train, X_test
+        if valid:
+            X_val_standarized = sc.transform(X_val)
+            X_val = pd.DataFrame(X_val_standarized, columns=X_val.columns, index=X_val.index)
+            return X_train, X_val, X_test
+
+        return X_train, None, X_test
 
     def divide_by_total_volume(self, df):
 
