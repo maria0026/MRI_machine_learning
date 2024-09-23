@@ -1,6 +1,9 @@
 import torch
 from torch import nn
 from torch.autograd import Variable
+from sklearn.base import BaseEstimator, ClassifierMixin
+import numpy as np
+import pandas as pd
 
 class NeuralNetwork(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
@@ -52,3 +55,26 @@ class RNNModel(nn.Module):
         #sigmoid
         out = torch.sigmoid(out)
         return out
+    
+class SklearnPyTorchWrapper(BaseEstimator, ClassifierMixin):
+    def __init__(self, model):
+        self.model = model
+    
+    def fit(self, X, y):
+        return self
+    
+    def predict(self, X):
+        if isinstance(X, pd.DataFrame):
+            X = X.values
+        X_tensor = torch.tensor(X, dtype=torch.float32)
+        with torch.no_grad():
+            outputs = self.model(X_tensor)
+        return np.where(outputs.numpy().flatten() < 0.5, 0, 1)
+    
+    def predict_proba(self, X):
+        if isinstance(X, pd.DataFrame):
+            X = X.values
+        X_tensor = torch.tensor(X, dtype=torch.float32)
+        with torch.no_grad():
+            outputs = self.model(X_tensor)
+        return np.vstack([1 - outputs.numpy().flatten(), outputs.numpy().flatten()]).T
