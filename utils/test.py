@@ -69,14 +69,13 @@ def svm_classification_model(X_test, y_test, clf):
     return accuracy, precision, recall, cm, fpr, tpr
 
 
-def svm_regression_model(X_test, y_test, clf, valid=False, z=None, z_quantiles=None, feature=None):
+def svm_regression_model(X_test, y_test, clf, z=None, feature=None):
     print('Best hyperparameters:',  clf.best_params_)
 
     y_pred = clf.predict(X_test)
     #detrend the results
-    if valid==True:
-        y_pred = y_pred - z[0]*y_test.values.ravel()**2 - z[1]*y_test.values.ravel() - z[2] #+ y_test.values.ravel()
-
+    if z is not None:
+        y_pred = y_pred - z[0]*y_test[feature].values.ravel()**2 - z[1]*y_test[feature].values.ravel() - z[2]
 
     mse=mean_squared_error(y_test[feature], y_pred)
     rmse = float(format(np.sqrt(mean_squared_error(y_test[feature], y_pred)), '.3f'))
@@ -88,38 +87,56 @@ def svm_regression_model(X_test, y_test, clf, valid=False, z=None, z_quantiles=N
         'Predicted': y_pred
     })
 
+    # Feature Importance with eli5
+    perm = PermutationImportance(clf.best_estimator_, scoring='neg_mean_absolute_error', n_iter=5).fit(X_test, y_test_flat)
+    df_fi = pd.DataFrame(dict(component_names=X_test.columns.tolist(),
+                          comp_imp=perm.feature_importances_, 
+                          std=perm.feature_importances_std_,
+                            ))
+    df_fi = df_fi.round(4)
 
-    for quantile, y_pred_quant in z_quantiles.items():
-        plt.plot(y_test[feature], y_pred_quant[0]*y_test[feature]+y_pred_quant[1], label=f"Quantile: {quantile}")
+    return mse, rmse, mae, results_df, df_fi
 
-    plt.plot(y_test[feature], y_pred, 'o', color='b', alpha=0.5, label='Predicted')
-    plt.show()
+def svm_regression_model_quantiles(results_df, y_test, z_quantiles=None, feature=None, plot=False, first_quantile=None, last_quantile=None):
+    y_pred=results_df['Predicted']
+
+    if z_quantiles is not None:
+        for quantile, y_pred_quant in z_quantiles.items():
+            plt.plot(y_test[feature], y_pred_quant[0]*y_test[feature]+y_pred_quant[1], label=f"Quantile: {quantile}")
+
+        if plot:
+            plt.plot(y_test[feature], y_pred, 'o', color='b', alpha=0.5, label='Predicted')
+            plt.show()
+            
+        lower_outliers=0
+        upper_outliers=0
+        identifiers=[]
+
+        y_pred_df=pd.DataFrame({'Predicted':np.array(y_pred)}, index=y_test.index)
     
-    first_quantile=0.01
-    last_quantile=0.99
-    lower_outliers=0
-    upper_outliers=0
-    identifiers=[]
 
-    for i, prediction in enumerate(y_pred):
-        if prediction < float(z_quantiles[first_quantile][0] * np.array(y_test[feature]).flatten()[i] + z_quantiles[first_quantile][1]):
-            lower_outliers += 1
-            identifiers.append(y_test.loc[i, 'identifier'])
-        if prediction > float(z_quantiles[last_quantile][0] * np.array(y_test[feature]).flatten()[i] + z_quantiles[last_quantile][1]):
-            upper_outliers += 1
-            identifiers.append(y_test.loc[i,'identifier'])
+        for i in range(len(y_pred_df)):
+            prediction = y_pred_df['Predicted'].iloc[i]
+            actual_value = np.array((y_test[feature]).iloc[i])
+            
+            if prediction < z_quantiles[first_quantile][0] * actual_value + z_quantiles[first_quantile][1]:
+                lower_outliers += 1
+                identifiers.append(y_test.loc[y_test.index[i], 'identifier'])
 
-    print("Lower outliers:", lower_outliers)
-    print("Upper outliers:", upper_outliers)
-    print("Identifiers of outliers:", identifiers)
+            if prediction > z_quantiles[last_quantile][0] * actual_value + z_quantiles[last_quantile][1]:
+                upper_outliers += 1
+                identifiers.append(y_test.loc[y_test.index[i], 'identifier'])
 
 
-    return mse, rmse, mae, results_df, identifiers
+        return identifiers, lower_outliers, upper_outliers
+
+    else:
+        return None, None, None
 
 
 
-def neural_network_classification(X_test, y_test, batch_size, model):
-    test_data =nn_data.Data(X_test, y_test)
+def neural_network_classification(X_test, y_test, batch_size, model, feature):
+    test_data =nn_data.Data(X_test, y_test[feature])
     test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
     y_test_flat= y_test.values.ravel()
     FPR=0
@@ -177,8 +194,8 @@ def neural_network_classification(X_test, y_test, batch_size, model):
 
     return accuracy, precision, recall, FPR, cf_matrix, fpr, tpr, df_fi
 
-def neural_network_regression(X_test, y_test, batch_size, model):
-    test_data =nn_data.Data(X_test, y_test)
+def neural_network_regression(X_test, y_test, batch_size, model, feature):
+    test_data =nn_data.Data(X_test, y_test[feature])
     test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
 
     y_pred = []
@@ -220,8 +237,8 @@ def neural_network_regression(X_test, y_test, batch_size, model):
 
     return mse, rmse, mae, y_pred_df, df_fi
 
-def recurrent_neural_network_classification(X_test, y_test, batch_size, seq_dim, input_dim, model):
-    test_data =nn_data.DataRNN(X_test, y_test, sequence_length=seq_dim)
+def recurrent_neural_network_classification(X_test, y_test, batch_size, seq_dim, input_dim, model, feature):
+    test_data =nn_data.DataRNN(X_test, y_test[feature], sequence_length=seq_dim)
     test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
 
     y_pred = []
@@ -268,8 +285,8 @@ def recurrent_neural_network_classification(X_test, y_test, batch_size, seq_dim,
     return accuracy, precision, recall, FPR, cf_matrix, fpr, tpr
 
 
-def recurrent_neural_network_regression(X_test, y_test, batch_size, seq_dim, input_dim, model):
-    test_data =nn_data.DataRNN(X_test, y_test, sequence_length=seq_dim)
+def recurrent_neural_network_regression(X_test, y_test, batch_size, seq_dim, input_dim, model, feature):
+    test_data =nn_data.DataRNN(X_test, y_test[feature], sequence_length=seq_dim)
     test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
     
     y_pred = []
