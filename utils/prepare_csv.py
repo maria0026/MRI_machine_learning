@@ -169,22 +169,22 @@ class FileProcessor:
             df.to_csv(f'{folder_out}/{filename}', sep="\t", index=False)
 
 
-    def concatenate_datasets(self):
+    def concatenate_datasets(self, path):
 
-        files=os.listdir(self.path)
+        files=os.listdir(path)
         rozmiar=0
         dfs=[]
         for file in files:
             print(file)
             if not 'all_concatenated' in file:
-                path= os.path.join(self.path, file)
-                print(path)
-                df = pd.read_csv(path, sep='\t')
+                filepath= os.path.join(path, file)
+                print(filepath)
+                df = pd.read_csv(filepath, sep='\t')
                 dfs.append(df)
                 rozmiar+=df.shape[1]
                 
         df = pd.concat(dfs, axis=1 )
-        #df = df.loc[:, ~df.columns.str.contains('Unnamed')]
+        df = df.loc[:, ~df.columns.str.contains('Unnamed')]
         df=df.dropna(axis=1, how='all')
         return df
         
