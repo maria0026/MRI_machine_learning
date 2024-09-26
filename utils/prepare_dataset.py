@@ -31,7 +31,7 @@ class DatasetPreprocessor:
         
         if valid:
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
-            X_train, X_val, y_train, y_val = train_test_split(X_test, y_test, test_size=0.5)
+            X_test, X_val, y_test, y_val = train_test_split(X_test, y_test, test_size=0.5)
 
             return X_train, X_val, X_test, y_train, y_val, y_test 
         else:
@@ -40,19 +40,32 @@ class DatasetPreprocessor:
 
             return X_train, X_val, X_test, y_train, y_val, y_test
 
-    def standarize_data(self, X_train, X_test, valid=False, X_val=None):
-        
-        sc = StandardScaler()
-        X_train_standarized = sc.fit_transform(X_train)
-        X_test_standarized = sc.transform(X_test)
-        X_train = pd.DataFrame(X_train_standarized, columns=X_train.columns, index=X_train.index)
-        X_test = pd.DataFrame(X_test_standarized, columns=X_test.columns, index=X_test.index)
-        if valid:
-            X_val_standarized = sc.transform(X_val)
-            X_val = pd.DataFrame(X_val_standarized, columns=X_val.columns, index=X_val.index)
-            return X_train, X_val, X_test
 
-        return X_train, None, X_test
+    def standardize_data(self, X_train, X_val, X_test, column_to_copy=[]):
+        scaler = StandardScaler()
+
+        X_train_to_scale = X_train.drop(columns=column_to_copy)
+        X_test_to_scale = X_test.drop(columns=column_to_copy)
+
+        X_train_scaled = scaler.fit_transform(X_train_to_scale)
+        X_test_scaled = scaler.transform(X_test_to_scale)
+
+        X_train_scaled_df = pd.DataFrame(X_train_scaled, columns=X_train_to_scale.columns, index=X_train_to_scale.index)
+        X_test_scaled_df = pd.DataFrame(X_test_scaled, columns=X_test_to_scale.columns, index=X_test_to_scale.index)
+
+        X_train = pd.concat([X_train_scaled_df, X_train[column_to_copy]], axis=1)
+        X_test = pd.concat([X_test_scaled_df, X_test[column_to_copy]], axis=1)
+
+        if X_val is not None:
+            X_val_to_scale = X_val.drop(columns=column_to_copy)
+            X_val_scaled = scaler.transform(X_val_to_scale)
+            X_val_scaled_df = pd.DataFrame(X_val_scaled, columns=X_val_to_scale.columns, index=X_val_to_scale.index)
+            X_val = pd.concat([X_val_scaled_df, X_val[column_to_copy]], axis=1)
+        else:
+            X_val = None
+
+        return X_train, X_val, X_test, scaler
+
 
     def divide_by_total_volume(self, df):
 
@@ -62,6 +75,13 @@ class DatasetPreprocessor:
 
         return df
 
+    def filter_by_sex(self, X_data, y_data, principal_df, sex_value):
+
+        indices = X_data[X_data['male'] == sex_value].index.tolist()
+        X_filtered = principal_df.loc[indices]
+        y_filtered = y_data.loc[indices]
+        return X_filtered, y_filtered
+    
     #nieuzywane
     def transform_correlations_total_volume(self, correlations):
 
