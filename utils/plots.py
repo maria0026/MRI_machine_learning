@@ -6,7 +6,7 @@ import pandas as pd
 from sklearn.tree import export_graphviz
 from IPython.display import Image
 import graphviz
-from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, ConfusionMatrixDisplay
+from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import roc_curve, auc
 import plotly.express as px
 import plotly.io as pio
@@ -14,7 +14,6 @@ import plotly.io as pio
 def plot_some_data(df):
     
     columns_to_drop=['identifier', 'norm_confirmed', 'sex', 'male', 'female']
-    #anomalies_detection.test_normality(filename, columns_to_drop)
     df=df.drop(columns=columns_to_drop)
     #plot histograms for first 4 columns
     plt.figure(figsize=(10, 10))
@@ -33,7 +32,7 @@ def plot_some_data(df):
     plt.subplots_adjust(hspace=1) 
     plt.show()
 
-def pca(pca_mri, train_pca, test_pca, X_train, y_train, X_test, y_test):
+def pca(train_pca, test_pca, X_train, y_train, X_test, y_test):
     
 
     train_principal_Df = pd.DataFrame(data = train_pca
@@ -100,8 +99,7 @@ def scree_plot(pca_mri, type='positive', dev=False):
     plt.yticks(fontsize=12)
     plt.show()
     '''
-    import matplotlib
-    print(matplotlib.__version__)
+
     plt.style.use('default')
     plt.plot(PC_values, pca_mri.explained_variance_ratio_, 'o-',  linewidth=2, color='m')
     plt.title('Scree Plot', fontsize=16)
@@ -292,11 +290,10 @@ def component_importance(importance_df, model):
     
     plt.show()
 
-def age_prediction_function(df, model):
+def age_prediction_function(df, model, data_type, valid=False, test=''):
     # Tworzenie figury z odpowiednim rozmiarem
     fig, axs = plt.subplots(2, 3, figsize=(15, 7))
     fig.suptitle(f'Actual vs Predicted Age by {model}', fontsize=16)
-    print(df.columns)
     list_actual = [column for column in df.columns if 'Actual' in column]
     list_predicted = [column for column in df.columns if 'Predicted' in column]
 
@@ -305,9 +302,9 @@ def age_prediction_function(df, model):
 
     for i in range(len(list_actual)):
         ax = axs[i // 3, i % 3]  # Pobieranie odpowiedniego podwykresu (2x3 layout)
-        ax.plot(df[list_actual[i]], df[list_predicted[i]], 'o', alpha=0.3, color='green')
-        ax.set_xlabel('Actual Age', fontsize=12)
-        ax.set_ylabel('Predicted Age', fontsize=12)
+        ax.plot(df[list_actual[i]], df[list_predicted[i]], 'o', alpha=0.3)
+        ax.set_xlabel('Actual Age (years)', fontsize=12)
+        ax.set_ylabel('Predicted Age (years)', fontsize=12)
         ax.set_title(f'Training {i + 1}', fontsize=14)
         ax.tick_params(axis='both', labelsize=10)
 
@@ -319,13 +316,74 @@ def age_prediction_function(df, model):
     all_predicted=list(all_predicted)
     # Tworzenie figury i osi
     ax=axs[1,2]  
-    ax.plot(all_actual, all_predicted, 'o', alpha=0.2, color='green')
+    ax.plot(all_actual, all_predicted, 'o', alpha=0.2)
+    unique_actual = np.unique(all_actual)
+    mean_predicted = [np.mean([all_predicted[j] for j in range(len(all_actual)) if all_actual[j] == ua]) for ua in unique_actual]
 
-    ax.set_xlabel('Actual Age')
-    ax.set_ylabel('Predicted Age')
+    # Dopasowanie wielomianu do unikalnych danych
+    z = np.polyfit(unique_actual, mean_predicted, 2)
+    p = np.poly1d(z)
+
+    ax.plot(unique_actual, p(unique_actual), "r--", label='y=%.2fx² + %.2fx + %.2f' % (z[0], z[1], z[2]))
+    #add line y=x
+    ax.plot(unique_actual, unique_actual, "b--", color='m', label='y=x')
+    ax.legend()
+    ax.set_xlabel('Actual Age (years)')
+    ax.set_ylabel('Predicted Age (years)')
     ax.set_title(f'Actual vs Predicted Age by {model}')
 
 
     fig.tight_layout()  
-    plt.savefig(f'plots/{model}_plot.png')
+    if valid:
+        plt.savefig(f'plots/{data_type}_{model}_valid{test}.png')
+    else:
+        plt.savefig(f'plots/{data_type}_{model}_plot{test}.png')
+    plt.show()
+
+def age_prediction_gap(df, model, data_type):
+    # Tworzenie figury z odpowiednim rozmiarem
+    fig, axs = plt.subplots(2, 3, figsize=(15, 7))
+    fig.suptitle(f'Gap in prediction by {model}', fontsize=16)
+    list_actual = [column for column in df.columns if 'Actual' in column]
+    list_predicted = [column for column in df.columns if 'Predicted' in column]
+
+    all_actual = np.array([])
+    all_predicted_dif = np.array([])
+
+    for i in range(len(list_actual)):
+        ax = axs[i // 3, i % 3]  # Pobieranie odpowiedniego podwykresu (2x3 layout)
+        ax.plot(df[list_actual[i]], df[list_predicted[i]]-df[list_actual[i]],  'o', alpha=0.3, color='orange')
+        ax.set_xlabel('Actual Age (years)', fontsize=12)
+        ax.set_ylabel('Age gap (years)', fontsize=12)
+        ax.set_title(f'Training {i + 1}', fontsize=14)
+        ax.tick_params(axis='both', labelsize=10)
+
+
+        all_actual = np.append(all_actual, df[list_actual[i]].values)
+        all_predicted_dif = np.append(all_predicted_dif, df[list_predicted[i]].values-df[list_actual[i]].values)
+
+    all_actual=list(all_actual)
+    all_predicted_dif=list(all_predicted_dif)
+    # Tworzenie figury i osi
+    ax=axs[1,2]  
+    ax.plot(all_actual, all_predicted_dif, 'o', alpha=0.2, color='orange')
+
+    unique_actual = np.unique(all_actual)
+    mean_predicted_dif = [np.mean([all_predicted_dif[j] for j in range(len(all_actual)) if all_actual[j] == ua]) for ua in unique_actual]
+
+    # Dopasowanie wielomianu do unikalnych danych
+    z = np.polyfit(unique_actual, mean_predicted_dif, 2)
+    p = np.poly1d(z)
+
+    # Tworzenie wykresu dla wielomianu kwadratowego
+    ax.plot(unique_actual, p(unique_actual), "r--", label='y=%.2fx² + %.2fx + %.2f' % (z[0], z[1], z[2]))
+
+    ax.legend()
+    ax.set_xlabel('Actual Age (years)')
+    ax.set_ylabel('Age gap (years)')
+    ax.set_title(f'Actual vs Predicted Age by {model}')
+
+
+    fig.tight_layout()  
+    plt.savefig(f'plots/{data_type}_{model}_gap_plot.png')
     plt.show()
