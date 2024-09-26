@@ -63,13 +63,13 @@ def main(args):
     folder_name=folder_out
     processor.convert_line_endings()
     #we get "all_contatenated.csv" file
-    concatenated_df=processor.concatenate_datasets()
-    concatenated_df.to_csv(f'{args.path}/{args.contatenated_filename}', sep='\t', index=False)
+    concatenated_df=processor.concatenate_datasets(folder_name)
+    print("concatnedated_df", concatenated_df.shape)
+    concatenated_df.to_csv(f'{folder_name}/{args.contatenated_filename}', sep='\t', index=False)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("parser for deleting unnormal features")
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
-    parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all/None, choose None if you don't want to test on the different dataset", type=str)
     parser.add_argument("--subjects_file", nargs="?", default="Subjects.csv", help="Name of the file with subjects", type=str)
     parser.add_argument("--contatenated_filename", nargs="?", default="all_concatenated.csv", help="Name of the file with subjects", type=str)
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier', 'norm_confirmed', 'sex', 'male', 'female', 'age','Estimated_Total_Intracranial_Volume'], help="Columns to drop", type=list)
@@ -77,6 +77,6 @@ if __name__ == "__main__":
     parser.add_argument("--old_delimiter", nargs="?", default=",", help="Old delimiter", type=str)
     parser.add_argument("--old_delimiter_2", nargs="?", default=";", help="Old delimiter", type=str)
     parser.add_argument("--delimiter", nargs="?", default="\t", help="New delimiter", type=str)
-    parser.add_argument("--folder_out_end", nargs="?", default="norm_confirmed", help="End of folder name", type=str)
+    parser.add_argument("--folder_out_end", nargs="?", default="norm_confirmed", help="End of folder out name", type=str)
     args = parser.parse_args()
     main(args)
