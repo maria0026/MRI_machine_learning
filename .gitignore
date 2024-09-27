@@ -3,7 +3,6 @@
 *.csv#
 *.pyc
 *.mat
-*.m
 *.pdf
 *.gv
 *.venv
