@@ -6,6 +6,40 @@ class FileProcessor:
     def __init__(self, path):
         self.path = path
 
+    def change_column_names(self):
+        files=os.listdir(self.path)
+        for file in files:
+            file_path = os.path.join(self.path, file)
+            df=pd.read_csv(file_path, sep='\t')
+            name=file.split('.')[0]
+            if name=='ASEG':
+                for column in df.columns[2:]:
+                    if 'ASEG' not in column:
+                        df = df.rename(columns={column: name+'-'+column})
+
+            elif name[0:2]=='LH' or name[0:2]=='RH':
+                #in RHDKT only from column 10
+                if name=='RHDKT':
+                    for column in df.columns[9:]:
+                        if "-"+name[0:2].lower()+"-" not in column:
+                            df = df.rename(columns={column: name[2:]+'-ctx-'+name[0:2].lower()+'-'+column})
+                elif name=='LHDKT':
+                    for column in df.columns[2:]:
+                        if "-"+name[0:2].lower()+"-" not in column:
+                                df = df.rename(columns={column: name[2:]+'-ctx-'+name[0:2].lower()+'-'+column})
+                else:
+                    for column in df.columns:
+                        if "-"+name[0:2].lower()+"-" not in column:
+                            df = df.rename(columns={column: name[2:]+'-ctx-'+name[0:2].lower()+'-'+column})
+            elif name=='WM':
+                for column in df.columns[5:]:
+                    if 'ASEG' not in column:
+                        df = df.rename(columns={column: 'ASEG'+'-'+column})
+
+
+            df.to_csv(file_path, sep='\t', index=False)
+
+
     def replace_comma_with_dot(self, filename):
         file_path=os.path.join(self.path, filename)
         try:
@@ -166,7 +200,9 @@ class FileProcessor:
             #check if folder_out exists
             if not os.path.exists(folder_out):
                 os.makedirs(folder_out)
+            
             df.to_csv(f'{folder_out}/{filename}', sep="\t", index=False)
+            print('Zapisano plik', f'{folder_out}/{filename}')
 
 
     def concatenate_datasets(self, path):
