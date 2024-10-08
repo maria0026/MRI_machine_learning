@@ -13,7 +13,7 @@ class DatasetPreprocessor:
             columns_to_drop=[]
             path=os.path.join(folder, file)
             df=pd.read_csv(path, sep='\t')
-        
+
             for column in df.columns:
                 if column in df_outliers.columns:
                     if df_outliers.loc['wynik testu', column]==1:
@@ -22,6 +22,7 @@ class DatasetPreprocessor:
             df=df.dropna(axis=1, how='all')
             if not os.path.exists(folder_out):
                 os.makedirs(folder_out)
+
             df.to_csv(f'{folder_out}/{file}', sep='\t', index=False)
 
         
@@ -81,6 +82,14 @@ class DatasetPreprocessor:
         X_filtered = principal_df.loc[indices]
         y_filtered = y_data.loc[indices]
         return X_filtered, y_filtered
+
+    def add_sex_column(self, df, principal_df):
+
+        indices = principal_df.index.tolist()
+        #add sex from df to principal_df 
+        principal_df['male']=df.loc[indices]['male'].values.astype(int)
+
+        return principal_df
     
     #nieuzywane
     def transform_correlations_total_volume(self, correlations):
