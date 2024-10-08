@@ -6,7 +6,7 @@ def main(args):
     
     processor = prepare_csv.FileProcessor(args.path)
     
-    processor.replace_comma_with_dot(args.subjects_file)
+    #processor.replace_comma_with_dot(args.subjects_file)
     processor.convert_delimiter(args.delimiter, args.old_delimiter, args.old_delimiter_2)
     processor.convert_line_endings()
 
@@ -27,7 +27,7 @@ def main(args):
     filenames=['LHA2009.csv', 'LHAPARC.csv', 'RHA2009.csv', 'RHAPARC.csv']
     processor.delete_specified_columns(filenames, columns)
 
-    columns=[ 'Left hemisphere cortical gray matter volume', 'Right hemisphere cortical gray matter volume','ASEG-Left hemisphere cerebral white matter volume','ASEG-Right hemisphere cerebral white matter volume', 'ASEG-Total cerebral white matter volume','ASEG-Subcortical gray matter volume', 'ASEG-Total gray matter volume', 'ASEG-Supratentorial volume', 'ASEG-Mask Volume', 'ASEG-Supratentorial volume_notvent']
+    columns=[ 'Left hemisphere cortical gray matter volume', 'Right hemisphere cortical gray matter volume','ASEG-Left hemisphere cerebral white matter volume','ASEG-Right hemisphere cerebral white matter volume', 'ASEG-Total cerebral white matter volume','ASEG-Subcortical gray matter volume', 'ASEG-Total gray matter volume', 'ASEG-Supratentorial volume', 'ASEG-Mask Volume', 'ASEG-Supratentorial volume_notvent', 'Supratentorial volume.1']
     filenames=['ASEG.csv']
     processor.delete_specified_columns(filenames, columns)
 

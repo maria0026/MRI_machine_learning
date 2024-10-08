@@ -3,7 +3,7 @@ import numpy as np
 from torch import nn
 import argparse
 from scipy.stats import randint, uniform
-from utils import dimensions_reduction, prepare_dataset, plots, train, valid, test, nn_data, test_one
+from utils import dimensions_reduction, prepare_dataset, plots, train, valid, test, nn_data
 import json
 import joblib
 
@@ -23,11 +23,9 @@ def main(args):
         identifier=df_test['identifier']
         df_test = df_test.drop(columns=args.columns_to_drop)
 
-  
-    mses, rmses, maes, outliers_all_lower, outliers_all_upper = [], [], [], [], []
+    mses, rmses, maes, count_outliers_lower, count_outliers_upper = [], [], [], [], []
     input_dim = args.components_nr
     loss_fn = nn.MSELoss()
-
 
     for i in range(args.n_crosval):
 
@@ -35,8 +33,8 @@ def main(args):
             df = preprocessor.divide_by_total_volume(df)
             if args.test_data_type!="None":
                 df_test = preprocessor.divide_by_total_volume(df_test)
-       
-        X_train, X_val, X_test, y_train, y_val, y_test = preprocessor.split_dataset(df, args.label_names, test_size=args.test_size, valid=args.validation)
+
+        X_train, X_val, X_test, y_train, y_val, y_test = preprocessor.split_dataset(df, args.label_names, test_size=args.test_size, valid=args.valid)
 
         if args.test_data_type!="None":
             X_test = df_test.drop(columns=args.label_names)
@@ -47,7 +45,7 @@ def main(args):
         y_test['identifier'] = identifier
 
         #PCA
-        pca_mri, train_pca, val_pca, test_pca, importance_df = reductor.principal_component_analysis(X_train, X_test, args.components_nr, args.n_most_important_features, X_val=X_val, validation=args.validation)
+        pca_mri, train_pca, val_pca, test_pca, importance_df = reductor.principal_component_analysis(X_train, X_test, args.components_nr, args.n_most_important_features, X_val=X_val, validation=args.valid)
         joblib.dump(pca_mri, f'models/{args.model_name}_pca_mri_train_nr_{i}.pkl')
         explained_variance_ratio = pca_mri.explained_variance_ratio_
         formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
@@ -56,7 +54,7 @@ def main(args):
         train_principal_Df = pd.DataFrame(data = train_pca
                     , columns = [str(i) for i in range(1,train_pca.shape[1]+1)], index=X_train.index)
         
-        if args.validation:
+        if args.valid:
             val_principal_Df = pd.DataFrame(data = val_pca
                         , columns = [str(i) for i in range(1,val_pca.shape[1]+1)], index=X_val.index)
 
@@ -64,21 +62,32 @@ def main(args):
                     , columns = [str(i) for i in range(1,test_pca.shape[1]+1)], index=X_test.index)
         
 
+        train_principal_Df=preprocessor.add_sex_column(df, train_principal_Df)
+        print(train_principal_Df)
+        test_principal_Df=preprocessor.add_sex_column(df, test_principal_Df)
+        if args.valid:
+            val_principal_Df=preprocessor.add_sex_column(df, val_principal_Df)
+
         if args.sex_subset == 'all':
             X_train = train_principal_Df
-            X_test = test_principal_Df
-            if args.validation:
-                X_val = val_principal_Df
+            X_train.rename(columns={'male': str(args.components_nr + 1)}, inplace=True)
 
+            X_test = test_principal_Df
+            X_test.rename(columns={'male': str(args.components_nr + 1)}, inplace=True)
+            if args.valid:
+                X_val = val_principal_Df
+                X_val.rename(columns={'male': str(args.components_nr + 1)}, inplace=True)
         else:
             sex_value = 1 if args.sex_subset == 'male' else 0
+            X_train = X_train[X_train['male'] == sex_value]
+            X_train.rename(columns={'male': str(args.components_nr + 1)}, inplace=True)
+            X_test = X_test[X_test['male'] == sex_value]
+            X_test.rename(columns={'male': str(args.components_nr + 1)}, inplace=True)
+            if args.valid:
+                X_val = X_val[X_val['male'] == sex_value]
+                X_val.rename(columns={'male': str(args.components_nr + 1)}, inplace=True)
 
-            X_train, y_train = preprocessor.filter_by_sex(X_train, y_train, train_principal_Df, sex_value)
-            X_test, y_test = preprocessor.filter_by_sex(X_test, y_test, test_principal_Df, sex_value)
-
-            if args.validation:
-                X_val, y_val = preprocessor.filter_by_sex(X_val, y_val, val_principal_Df, sex_value) 
-
+    
         feature=args.label_names
         print("Odchylenie",np.std(y_train[feature[0]]))
         print("Srednia", np.mean(y_train[feature[0]]))
@@ -108,21 +117,23 @@ def main(args):
             svm_param_dist['gamma'] = uniform(*svm_param_dist['gamma']) 
             
             clf = trainer.svm_regression_model(X_train, y_train, svm_param_dist, feature)
-            if args.validation:
-                z, z_quantiles = valid.svm_regression_model(X_val, y_val, clf, feature, plot=args.plot)
+            if args.valid:
+                z, z_quantiles= valid.svm_regression_model(X_val, y_val, clf, feature, plot=args.plot)
             else:
                 z=None
                 z_quantiles=None
-
+    
             mse, rmse, mae, results_df, feature_importance = test.svm_regression_model(X_test, y_test, clf, z=z, feature=feature)
             importance_df = pd.concat([feature_importance.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
-            identifiers, lower_outliers, upper_outliers = test.svm_regression_model_quantiles(results_df, y_test, z_quantiles=z_quantiles, feature=feature, plot=args.plot, first_quantile=args.first_quantile, last_quantile=args.last_quantile)
+            identifiers_lower, identifiers_upper = test.svm_regression_model_quantiles(results_df, y_test, z_quantiles=z_quantiles, feature=feature, plot=args.plot, first_quantile=args.first_quantile, last_quantile=args.last_quantile)
             joblib.dump(clf, f'models/{args.model_name}_model_train_nr_{i}.pkl')
             joblib.dump(z, f'models/{args.model_name}_z_train_nr_{i}.pkl')
             joblib.dump(z_quantiles, f'models/{args.model_name}_z_quantiles_train_nr_{i}.pkl')
-            identifiers= pd.Series(identifiers, name='identifier')
-            outliers_all_lower.append(lower_outliers)
-            outliers_all_upper.append(upper_outliers)
+            identifiers_lower=pd.Series(identifiers_lower, name='identifier_lower')
+            identifiers_upper=pd.Series(identifiers_upper, name='identifier_upper')
+            identifiers=pd.concat([identifiers_lower, identifiers_upper], axis=1)
+            count_outliers_lower.append(len(identifiers_lower))
+            count_outliers_upper.append(len(identifiers_upper))
 
 
         elif args.model_name=='fnn':
@@ -142,24 +153,24 @@ def main(args):
             
 
         if i==0:
-            importance_df.to_csv(f'{args.results_directory}/{args.data_type}_importance_age_{args.model_name}_valid_{args.validation}.csv', sep='\t')
-            results_df.to_csv(f'{args.results_directory}/{args.data_type}_regression_results_{args.model_name}_valid_{args.validation}.csv', sep='\t')
+            importance_df.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t')
+            results_df.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t')
             
             if args.model_name=='svm':
-                identifiers.to_csv(f'{args.results_directory}/{args.data_type}_identifiers_{args.model_name}_valid_{args.validation}.csv', sep='\t')
+                identifiers.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_identifiers_{args.model_name}_valid_{args.valid}.csv', sep='\t')
         else:
-            importance_df_old = pd.read_csv(f'{args.results_directory}/{args.data_type}_importance_age_{args.model_name}_valid_{args.validation}.csv', sep='\t', index_col=0)
+            importance_df_old = pd.read_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index_col=0)
             importance_df = pd.concat([importance_df_old, importance_df], axis = 1)
-            importance_df.to_csv(f'{args.results_directory}/{args.data_type}_importance_age_{args.model_name}_valid_{args.validation}.csv', sep='\t', index=True)
+            importance_df.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=True)
 
-            results_df_old = pd.read_csv(f'{args.results_directory}/{args.data_type}_regression_results_{args.model_name}_valid_{args.validation}.csv', sep='\t')
+            results_df_old = pd.read_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t')
             results_df = pd.concat([results_df_old.reset_index(drop = True), results_df.reset_index(drop = True)], axis = 1)
-            results_df.to_csv(f'{args.results_directory}/{args.data_type}_regression_results_{args.model_name}_valid_{args.validation}.csv', sep='\t', index=False)
+            results_df.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
 
             if args.model_name=='svm':
-                identifiers_old = pd.read_csv(f'{args.results_directory}/{args.data_type}_identifiers_{args.model_name}_valid_{args.validation}.csv', sep='\t', index_col=0)
+                identifiers_old = pd.read_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_identifiers_{args.model_name}_valid_{args.valid}.csv', sep='\t', index_col=0)
                 identifiers = pd.concat([identifiers_old, identifiers], axis = 1)
-                identifiers.to_csv(f'{args.results_directory}/{args.data_type}_identifiers_{args.model_name}_valid_{args.validation}.csv', sep='\t', index=True)
+                identifiers.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_identifiers_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=True)
 
         mses.append(mse)
         rmses.append(rmse)
@@ -170,19 +181,19 @@ def main(args):
     print("Root mean squared error", np.mean(rmses), np.std(rmses))
     print("Mean absolute error", np.mean(maes), np.std(maes))
 
-    outliers_all_lower = np.array([x if x is not None else np.nan for x in outliers_all_lower])
-    outliers_all_upper = np.array([x if x is not None else np.nan for x in outliers_all_upper])
-    print("Outliers lower", np.nanmean(outliers_all_lower)/y_test.shape[0], np.nanstd(outliers_all_lower)/y_test.shape[0])
-    print("Outliers upper", np.nanmean(outliers_all_upper)/y_test.shape[0], np.nanstd(outliers_all_upper)/y_test.shape[0])
+    count_outliers_lower = np.array([x if x is not None else np.nan for x in count_outliers_lower])
+    count_outliers_upper = np.array([x if x is not None else np.nan for x in count_outliers_upper])
+    print("Outliers lower", np.nanmean(count_outliers_lower)/y_test.shape[0], np.nanstd(count_outliers_lower)/y_test.shape[0])
+    print("Outliers upper", np.nanmean(count_outliers_upper)/y_test.shape[0], np.nanstd(count_outliers_upper)/y_test.shape[0])
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("parser for age preidction")
-    parser.add_argument("--model_name", nargs="?", default="rnn", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)
-    parser.add_argument("--validation", nargs="?", default=0, help="create validation set: 0/1", type=bool)
+    parser.add_argument("--valid", nargs="?", default=1, help="create valid set: 0/1", type=bool)
     parser.add_argument("--sex_subset", nargs="?", default="all", help="Choose the sex subset: all/female/male", type=str)
     parser.add_argument("--division_by_total_volume", nargs="?", default=1, help="Divide volumetric data by Estimated_Total_Intracranial_Volume: 1/0", type=bool)
     parser.add_argument("--n_most_important_features", nargs="?", default=20, help="Choose the number of extracting features that load into components")
@@ -218,6 +229,5 @@ if __name__ == "__main__":
     parser.add_argument("--first_quantile", nargs="?", default=0.01, help="First quantile for svm regression", type=float)
     parser.add_argument("--last_quantile", nargs="?", default=0.99, help="Last quantile for svm regression", type=float)
     parser.add_argument("--plot", nargs="?", default=0, help="Plot results", type=bool)
-    parser.add_argument("--test_one", nargs="?", default=0, help="Test one case", type=bool )
     args = parser.parse_args()
     main(args)

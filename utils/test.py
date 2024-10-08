@@ -14,7 +14,7 @@ from eli5.sklearn import PermutationImportance
 import eli5
 from sklearn.base import BaseEstimator, ClassifierMixin
 from torch.autograd import Variable
-import shap
+
 
 def random_forest_model(X_test, y_test, feature, rf):
     print('Best hyperparameters:',  rf.best_params_)
@@ -108,10 +108,8 @@ def svm_regression_model_quantiles(results_df, y_test, z_quantiles=None, feature
             plt.plot(y_test[feature], y_pred, 'o', color='b', alpha=0.5, label='Predicted')
             plt.show()
             
-        lower_outliers=0
-        upper_outliers=0
-        identifiers=[]
-
+        identifiers_lower=[]
+        identifiers_upper=[]
         y_pred_df=pd.DataFrame({'Predicted':np.array(y_pred)}, index=y_test.index)
     
 
@@ -120,18 +118,16 @@ def svm_regression_model_quantiles(results_df, y_test, z_quantiles=None, feature
             actual_value = np.array((y_test[feature]).iloc[i])
             
             if prediction < z_quantiles[first_quantile][0] * actual_value + z_quantiles[first_quantile][1]:
-                lower_outliers += 1
-                identifiers.append(y_test.loc[y_test.index[i], 'identifier'])
+                identifiers_lower.append(y_test.loc[y_test.index[i], 'identifier'])
 
             if prediction > z_quantiles[last_quantile][0] * actual_value + z_quantiles[last_quantile][1]:
-                upper_outliers += 1
-                identifiers.append(y_test.loc[y_test.index[i], 'identifier'])
+                identifiers_upper.append(y_test.loc[y_test.index[i], 'identifier'])
 
 
-        return identifiers, lower_outliers, upper_outliers
+        return identifiers_lower, identifiers_upper
 
     else:
-        return None, None, None
+        return None, None
 
 
 

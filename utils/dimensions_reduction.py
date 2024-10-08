@@ -50,9 +50,15 @@ class DimensionsReductor:
         
         for j in range(n_features):
             importance_df[f'Feature {j+1} Value'] = [important_values[i][j] for i in range(n_pcs)]
-
-        # Dodanie indeksów jako numerów komponentów
+            
         importance_df.index = range(1, n_pcs + 1)
+
+        # Dodanie pustego wiersza
+        empty_row = pd.DataFrame([[np.nan] * importance_df.shape[1]], columns=importance_df.columns)
+        importance_df = pd.concat([importance_df, empty_row], ignore_index=True)
+
+        # Ustawienie indeksów
+        importance_df.index = range(1, len(importance_df) + 1)
 
         if validation:
             return pca_mri, train_pca, val_pca, test_pca,  importance_df

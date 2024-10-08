@@ -34,7 +34,7 @@ def main(args):
             X_test = df_test.drop(columns=args.label_names)
             y_test = df_test[args.label_names]
 
-        X_train, _,  X_test = preprocessor.standardize_data(X_train, X_val, X_test)
+        X_train, _,  X_test, _ = preprocessor.standardize_data(X_train, X_val, X_test)
 
         #PCA
         pca_mri, train_pca, _, test_pca, importance_df = reductor.principal_component_analysis(X_train, X_test, args.components_nr, n_features=args.n_most_important_features)
@@ -123,7 +123,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("parser for sex preidction")
-    parser.add_argument("--model_name", nargs="?", default="rnn", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="positive", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)

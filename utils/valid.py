@@ -7,12 +7,7 @@ from sklearn.utils.fixes import parse_version, sp_version
 def svm_regression_model(X_val, y_val, clf, feature, plot=False):
 
     y_pred = clf.predict(X_val)
-
     y_test_flat = y_val[feature].values.ravel() 
-    results_df = pd.DataFrame({
-        'Actual': y_test_flat,  
-        'Predicted': y_pred
-    })
     
     unique_actual, indices = np.unique(y_test_flat, return_index=True)
     mean_predicted = [np.mean([y_pred[j] for j in range(len(y_test_flat)) if y_test_flat[j] == ua]) for ua in unique_actual]
@@ -22,7 +17,11 @@ def svm_regression_model(X_val, y_val, clf, feature, plot=False):
     print("Wielomian dopasowania", z[0], z[1], z[2])
 
     y_pred=y_pred-z[0]*y_val[feature].values.ravel()**2-z[1]*y_val[feature].values.ravel()-z[2]
-    
+
+    results_df = pd.DataFrame({
+        'Actual': y_test_flat,  
+        'Predicted': y_pred
+    })
     #transform df to numpy array
     X = y_val[feature].to_numpy()
     y=y_pred

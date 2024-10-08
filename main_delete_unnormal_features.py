@@ -10,14 +10,14 @@ def main(args):
 
     filename = f'data/{args.data_type}_{args.folder_in_end}/{args.filename}'
     df = pd.read_csv(filename, sep='\t')
-    print(df)
+    #print(df)
     #plots.plot_some_data(df)
 
     #searching for unnormal columns
     df_normality_scores, df_outliers = anomalies_detector.test_normality(filename, args.columns_to_drop)
     df_normality_scores.to_csv(f'{args.results_directory}/{args.data_type}_outliers_values.csv', sep='\t', index=True)
     df_outliers.to_csv(f'{args.results_directory}/{args.data_type}_outliers.csv', sep='\t', index=True)
-    print(df_normality_scores)
+    #print(df_normality_scores)
     row_sum = df_normality_scores.loc['wynik testu'].sum()
     print("ilosc nienormalnych",row_sum)
 

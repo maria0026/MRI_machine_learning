@@ -2,14 +2,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import pandas as pd
-
 from sklearn.tree import export_graphviz
-from IPython.display import Image
 import graphviz
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import roc_curve, auc
-import plotly.express as px
-import plotly.io as pio
 
 def plot_some_data(df):
     
@@ -335,12 +331,12 @@ def age_prediction_function(df, model, data_type, valid=False, test=''):
 
     fig.tight_layout()  
     if valid:
-        plt.savefig(f'plots/{data_type}_{model}_valid{test}.png')
+        plt.savefig(f'plots/{data_type}_{model}_valid_{test}.png')
     else:
-        plt.savefig(f'plots/{data_type}_{model}_plot{test}.png')
+        plt.savefig(f'plots/{data_type}_{model}_plot_{test}.png')
     plt.show()
 
-def age_prediction_gap(df, model, data_type):
+def age_prediction_gap(df, model, data_type, valid=False, test=''):
     # Tworzenie figury z odpowiednim rozmiarem
     fig, axs = plt.subplots(2, 3, figsize=(15, 7))
     fig.suptitle(f'Gap in prediction by {model}', fontsize=16)
@@ -385,5 +381,9 @@ def age_prediction_gap(df, model, data_type):
 
 
     fig.tight_layout()  
-    plt.savefig(f'plots/{data_type}_{model}_gap_plot.png')
+    if valid:
+        plt.savefig(f'plots/{data_type}_{model}_gap_valid_{test}.png')
+    else:
+        plt.savefig(f'plots/{data_type}_{model}_gap_plot_{test}.png')
+    plt.show()
     plt.show()

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-def svm_regression(clf, X_test, y_test, z=None, z_quantiles=None, feature=None, plot=False, first_quantile=None, last_quantile=None):
+def svm_regression(clf, X_test, y_test, z=None, z_quantiles=None, feature=None, plot=False, first_quantile=None, last_quantile=None, nr_of_fold=0):
     
     y_pred = clf.predict(X_test)
     y_pred = y_pred -  z[0]*y_test[feature].values.ravel()**2 - z[1]*y_test[feature].values.ravel() - z[2]
@@ -12,13 +12,13 @@ def svm_regression(clf, X_test, y_test, z=None, z_quantiles=None, feature=None, 
 
     if plot:
         plt.plot(y_test[feature], y_pred, 'o', color='b', alpha=0.5, label='Predicted')
+        plt.savefig(f'plots/quantiles_{nr_of_fold}.png')
         plt.show()
         
-    lower_outliers=0
-    upper_outliers=0
-    identifiers=[]
+    identifiers_lower=[]
+    identifiers_upper=[]
 
-    y_pred_df=pd.DataFrame({'Predicted':np.array(y_pred)}, index=y_test.index)
+    y_pred_df=pd.DataFrame({'Predicted':np.array(y_pred), 'Actual': y_test[feature].values.flatten()}, index=y_test.index)
 
 
     for i in range(len(y_pred_df)):
@@ -26,13 +26,11 @@ def svm_regression(clf, X_test, y_test, z=None, z_quantiles=None, feature=None, 
         actual_value = np.array((y_test[feature]).iloc[i])
         
         if prediction < z_quantiles[first_quantile][0] * actual_value + z_quantiles[first_quantile][1]:
-            lower_outliers += 1
-            identifiers.append(y_test.loc[y_test.index[i], 'identifier'])
+            identifiers_lower.append(y_test.loc[y_test.index[i], 'identifier'])
 
         if prediction > z_quantiles[last_quantile][0] * actual_value + z_quantiles[last_quantile][1]:
-            upper_outliers += 1
-            identifiers.append(y_test.loc[y_test.index[i], 'identifier'])
+            identifiers_upper.append(y_test.loc[y_test.index[i], 'identifier'])
 
 
-    return identifiers, lower_outliers, upper_outliers
+    return identifiers_lower, identifiers_upper, y_pred_df
 
