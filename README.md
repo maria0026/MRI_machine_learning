@@ -17,5 +17,5 @@ The scripts should be run after activating the virtual environment with source .
 
 # Library versions:
 
-    numpy 1.26.4
-    scipy 1.13.1
+    numpy==1.24.3
+    scikit-learn==1.1.3
