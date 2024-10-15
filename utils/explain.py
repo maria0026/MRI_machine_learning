@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from sklearn.linear_model import RANSACRegressor
+from sklearn.linear_model import RANSACRegressor, HuberRegressor
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import mean_squared_error
@@ -13,18 +13,29 @@ from scipy import stats
 def calculate_trends(df, column, X_feature_name):
 
     X = df[X_feature_name].values
-    ransac = RANSACRegressor()
-    degree = 3
-    model = make_pipeline(PolynomialFeatures(degree), ransac)
+    huber = HuberRegressor()
+    degree = 2
+    model = make_pipeline(PolynomialFeatures(degree), huber)
     
     y = df[column].values
     model.fit(X, y)
-    ransac_model = model.named_steps['ransacregressor']
 
-    # Współczynniki wielomianu (dla dopasowanego modelu)
-    coefficients = ransac_model.estimator_.coef_
-    intercept = ransac_model.estimator_.intercept_
+    coefficients = huber.coef_
+    intercept = huber.intercept_
 
+    '''
+    x_range = np.linspace(5, 85, 1000).reshape(-1, 1)  # Przykładowe punkty do przewidywania
+    y2 =  x_range**2 * coefficients[2] + x_range * coefficients[1] + coefficients[0]+ intercept
+    y_ransac = model.predict(x_range)
+    # Rysowanie wyników
+    plt.scatter(X, y, color='blue', alpha=0.4, label='Dane')
+    plt.plot(x_range, y_ransac, color='red', label=f'Wielomian stopnia {degree}')
+    #plt.scatter(new_x, new_y, color='red', label=f'po odjęciu wielomianu stopnia {degree}')
+    plt.plot(x_range, y2, color='green', label=f'Wielomian stopnia {degree}')
+    plt.title(f'{column}')
+    plt.legend()
+    plt.show()
+    '''
     return model, coefficients, intercept
 
 
@@ -63,7 +74,7 @@ def scores(df, column, X_feature_name, model):
     kurt = kurtosis(new_y)
 
     mad = stats.median_abs_deviation(new_y)
-    median = np.median(y)
+    median = np.median(new_y)
 
     q1 = np.quantile(new_y, 0.25)
     q3 = np.quantile(new_y, 0.75)
@@ -112,5 +123,28 @@ def calculate_quantiles(df, column, X_feature_name, quantiles, model):
     plt.show()
     '''
         
+def calculate_normality(df, column, X_feature_name, df_scores):
 
+    df_abnormalities = pd.DataFrame()
+    X = df[X_feature_name].values
+    y = df[column].values
+    function_value = np.squeeze(df_scores.loc[column, 'intercept'] +df_scores.loc[column, '1']+ df_scores.loc[column, 'x']*X + df_scores.loc[column, 'x^2']*X**2)
+    new_y = y - function_value
+    #plt.plot(X, new_y, 'o', color='b', alpha=0.5, label='Predicted')
+    #plt.show()
+    for i in range(len(new_y)):
+        if (new_y[i] >= df_scores.loc[column, '0.05 quantile'] and new_y[i] <= df_scores.loc[column, '0.95 quantile']):
+            df_abnormalities.loc[i, column]=1
+        elif (new_y[i] < df_scores.loc[column, '0.005 quantile'] or new_y[i] > df_scores.loc[column, '0.995 quantile']):
+            df_abnormalities.loc[i, column]=0.005
+            #print(new_y[i], df_scores.loc[column, '0.005 quantile'], df_scores.loc[column, '0.995 quantile'])
+        elif (new_y[i] < df_scores.loc[column, '0.01 quantile'] or new_y[i] > df_scores.loc[column, '0.99 quantile']):
+            df_abnormalities.loc[i, column]=0.01
+        elif (new_y[i] < df_scores.loc[column, '0.02 quantile'] or new_y[i] > df_scores.loc[column, '0.98 quantile']):
+            df_abnormalities.loc[i, column]=0.02
+        elif (new_y[i] < df_scores.loc[column, '0.05 quantile'] or new_y[i] > df_scores.loc[column, '0.95 quantile']):
+            df_abnormalities.loc[i, column]=0.05
+        else:
+            df_abnormalities.loc[i, column]=0
 
+    return df_abnormalities
