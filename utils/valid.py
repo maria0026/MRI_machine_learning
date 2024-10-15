@@ -78,6 +78,7 @@ def svm_regression_model(X_val, y_val, clf, feature, plot=False):
         plt.xlabel("x")
         plt.ylabel("y")
         _ = plt.title("Quantiles of heteroscedastic Normal distributed target")
+        plt.savefig('plots/quantiles_valid.png')
         plt.show()
 
     return z, z_quantiles
