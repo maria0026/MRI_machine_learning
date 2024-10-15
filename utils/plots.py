@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.tree import export_graphviz
 import graphviz
 from sklearn.metrics import ConfusionMatrixDisplay
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import auc
 
 def plot_some_data(df):
     
@@ -76,25 +76,6 @@ def pca(train_pca, test_pca, X_train, y_train, X_test, y_test):
     
 def scree_plot(pca_mri, type='positive', dev=False):
     PC_values = np.arange(pca_mri.n_components_) + 1
-    '''
-    plt.figure(figsize=(20,10))
-    plt.subplot(1, 2, 1)
-    plt.plot(PC_values, pca_mri.explained_variance_, 'o-', linewidth=2, color='blue')
-    plt.title('Scree Plot')
-    plt.xlabel('Principal Component', fontsize=14)
-    plt.ylabel('Variance Explained', fontsize=14)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-
-    plt.subplot(1, 2, 2)
-    plt.plot(PC_values, pca_mri.explained_variance_ratio_, 'o-',  linewidth=2, color='blue')
-    plt.title('Scree Plot', fontsize=16)
-    plt.xlabel('Principal Component', fontsize=16)
-    plt.ylabel('Variance Explained Ratio', fontsize=16)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.show()
-    '''
 
     plt.style.use('default')
     plt.plot(PC_values, pca_mri.explained_variance_ratio_, 'o-',  linewidth=2, color='m')
@@ -111,8 +92,6 @@ def scree_plot(pca_mri, type='positive', dev=False):
 
 
 def random_forest(X_train, rf):
-
-
     # Export the first three decision trees from the forest
     for i in range(3):
         tree = rf.estimators_[i]
@@ -125,22 +104,20 @@ def random_forest(X_train, rf):
         graph = graphviz.Source(dot_data)
         graph.view()
 
+
 def confusion_matrix(cm):
     ConfusionMatrixDisplay(confusion_matrix=cm).plot();
     plt.show()
 
+
 def random_forest_features(X_train, rf):
-    # Create a series containing feature importances from the model and feature names from the training data
     best_rf = rf.best_estimator_
     feature_importances = pd.Series(best_rf.feature_importances_, index=X_train.columns).sort_values(ascending=False)
-
-    # Plot a simple bar chart
     feature_importances.plot.bar();
     plt.show()
 
-def correlation_matrix(correlations):
 
-  
+def correlation_matrix(correlations):
     plt.figure(figsize=(20, 20))
     sns.heatmap(round(correlations,2), cmap='RdBu',  
             vmin=-1, vmax=1);
@@ -148,8 +125,6 @@ def correlation_matrix(correlations):
 
 def roc_curve(fpr, tpr):
     roc_auc = auc(fpr, tpr)
-
-    # Plot the ROC curve
     plt.figure()  
     plt.plot(fpr, tpr, label='ROC curve (area = %0.2f)' % roc_auc)
     plt.plot([0, 1], [0, 1], 'k--')
@@ -161,14 +136,10 @@ def roc_curve(fpr, tpr):
     plt.legend()
     plt.show()
     
-    
-def t_sne(pca_mri, train_pca, X_train, y_train):
-    
-
+def t_sne(train_pca, X_train, y_train):
     train_principal_Df = pd.DataFrame(data = train_pca
              , columns = [str(i) for i in range(1,train_pca.shape[1]+1)], index=X_train.index)
 
-    
 
     y_train['age_label']=y_train['age'].apply(lambda x: 1 if x>30 else 0)
     targets = [1,0]
@@ -237,6 +208,7 @@ def correlations_total_volume(df):
     plt.tight_layout()
     plt.show()
 
+#compare distributions in train and test set
 def distribution(train_pca, test_pca): 
 
     train_pca=pd.DataFrame(train_pca)
@@ -247,8 +219,6 @@ def distribution(train_pca, test_pca):
     plt.figure(figsize=(10, 10))
     for i, column in enumerate(test_pca.columns[:9]):
         plt.subplot(3, 3, i+1)
-
-        # Ustalanie wspólnego zakresu dla osi x
         min_value = min(train_pca[column].min(), test_pca[column].min())
         max_value = max(train_pca[column].max(), test_pca[column].max())
         bins = np.linspace(min_value, max_value, 30)
@@ -260,31 +230,6 @@ def distribution(train_pca, test_pca):
     plt.subplots_adjust(hspace=0.5) 
     plt.show()
 
-def component_importance(importance_df, model):
-    importance_df=importance_df.sort_values(by='comp_imp')
-    #pick 3 the most important features
-    importance_df=importance_df.tail(3)
-# Tworzenie wykresu słupkowego
-    fig, ax = plt.subplots()
-    bars = ax.bar([1,2,3], importance_df['comp_imp'], color='green', alpha=0.5)
-    
-    # Dodawanie etykiet nad słupkami
-    for i, bar in enumerate(bars):
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width() / 2.0, height, f'{height:.2f}', ha='center', va='bottom')
-        component_nr=importance_df['component_names'].iloc[i]
-        ax.text(bar.get_x() + bar.get_width() / 2.0, 0, f'component nr {component_nr}', ha='center', va='bottom')
-        
-    
-    # Ustawienie tytułu
-    ax.set_title(f'Component Importance on {model}')
-    
-    # Zmiana etykiet osi X na numery
-    ax.set_xticks([])
-    #ax.set_xticks(range(len(importance_df['component_names'])))
-    #ax.set_xticklabels(range(1, len(importance_df['component_names']) + 1))
-    
-    plt.show()
 
 def age_prediction_function(df, model, data_type, valid=False, test=''):
     # Tworzenie figury z odpowiednim rozmiarem

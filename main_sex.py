@@ -1,11 +1,12 @@
 import pandas as pd
 import numpy as np
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import auc
 from torch import nn
 import argparse
 from scipy.stats import randint, uniform
-from utils import dimensions_reduction, prepare_dataset, plots, train, valid, test, nn_data
 import json
+from utils import dimensions_reduction, prepare_dataset, plots, train, valid, test, nn_data
+
 
 def main(args):
 

@@ -1,7 +1,7 @@
-from utils import anomalies_detection
-from utils import prepare_dataset
 import pandas as pd
 import argparse
+from utils import anomalies_detection, prepare_dataset
+
 
 def main(args):
 

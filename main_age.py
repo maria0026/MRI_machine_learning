@@ -3,9 +3,10 @@ import numpy as np
 from torch import nn
 import argparse
 from scipy.stats import randint, uniform
-from utils import dimensions_reduction, prepare_dataset, plots, train, valid, test, nn_data
 import json
 import joblib
+from utils import dimensions_reduction, prepare_dataset, train, valid, test, nn_data
+
 
 def main(args):
 

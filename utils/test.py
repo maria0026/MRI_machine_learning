@@ -1,5 +1,5 @@
-from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, ConfusionMatrixDisplay
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score
+from sklearn.metrics import roc_curve
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error
@@ -8,11 +8,8 @@ import torch
 import itertools
 from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import confusion_matrix
-import seaborn as sns
 from utils import nn_data, nn_model
 from eli5.sklearn import PermutationImportance
-import eli5
-from sklearn.base import BaseEstimator, ClassifierMixin
 from torch.autograd import Variable
 
 

@@ -1,10 +1,10 @@
 import pandas as pd
-import numpy as np
-from utils import dimensions_reduction, prepare_dataset, plots, train, valid, test, nn_data, test_one
 import argparse
 import joblib
+from utils import prepare_dataset, test_one
 
-def main(scaler):
+
+def main(args):
     preprocessor = prepare_dataset.DatasetPreprocessor()
 
     df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')

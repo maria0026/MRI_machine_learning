@@ -1,6 +1,6 @@
-from utils import prepare_csv
 import argparse
-import os
+from utils import prepare_csv
+
 
 def main(args):
     
