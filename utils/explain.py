@@ -148,3 +148,15 @@ def calculate_normality(df, column, X_feature_name, df_scores):
             df_abnormalities.loc[i, column]=0
 
     return df_abnormalities
+
+
+def create_features_results(df_abnormalities_all):
+    df_features_results = pd.DataFrame()
+
+    for ind, row in df_abnormalities_all.iterrows():
+        for column in df_abnormalities_all.columns:
+            if column not in ['identifier', 'lower', 'male']:
+                if row[column] <= 0.01:
+                    df_features_results = pd.concat([df_features_results, pd.DataFrame({'identifier': [ind], 'feature': [column], 'lower': [df_abnormalities_all.loc[ind, 'lower']], 'male': [df_abnormalities_all.loc[ind, 'male']]})])
+    
+    return df_features_results
