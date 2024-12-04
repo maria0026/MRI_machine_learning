@@ -42,7 +42,8 @@ def random_forest_regression_model(X_test, y_test, feature, rf):
     print(y_test.shape, y_pred.shape)
     results_df = pd.DataFrame({
         'Actual': y_test[feature].values.flatten(), 
-        'Predicted': y_pred.flatten()
+        'Predicted': y_pred.flatten(),
+        'identifier': y_test['identifier'].values
     })
 
     return mse, rmse, mae, results_df
@@ -81,7 +82,8 @@ def svm_regression_model(X_test, y_test, clf, z=None, feature=None):
     y_test_flat = y_test[feature].values.ravel() 
     results_df = pd.DataFrame({
         'Actual': y_test_flat,  
-        'Predicted': y_pred
+        'Predicted': y_pred,
+        'identifier': y_test['identifier'].values
     })
 
     # Feature Importance with eli5
@@ -103,10 +105,15 @@ def svm_regression_model_quantiles(results_df, y_test, z_quantiles=None, feature
 
         if plot:
             plt.plot(y_test[feature], y_pred, 'o', color='b', alpha=0.5, label='Predicted')
+            plt.xlabel("Actual age")
+            plt.ylabel("Predicted age")
+            plt.savefig("plots/quantiles_test.png")
             plt.show()
             
         identifiers_lower=[]
         identifiers_upper=[]
+        sex_lower=[]
+        sex_upper=[]
         y_pred_df=pd.DataFrame({'Predicted':np.array(y_pred)}, index=y_test.index)
     
 
@@ -116,15 +123,17 @@ def svm_regression_model_quantiles(results_df, y_test, z_quantiles=None, feature
             
             if prediction < z_quantiles[first_quantile][0] * actual_value + z_quantiles[first_quantile][1]:
                 identifiers_lower.append(y_test.loc[y_test.index[i], 'identifier'])
+                sex_lower.append(y_test.loc[y_test.index[i], 'male'])
 
             if prediction > z_quantiles[last_quantile][0] * actual_value + z_quantiles[last_quantile][1]:
                 identifiers_upper.append(y_test.loc[y_test.index[i], 'identifier'])
+                sex_upper.append(y_test.loc[y_test.index[i], 'male'])
 
 
-        return identifiers_lower, identifiers_upper
+        return identifiers_lower, identifiers_upper, sex_lower, sex_upper
 
     else:
-        return None, None
+        return None, None, None, None
 
 
 
@@ -188,7 +197,7 @@ def neural_network_classification(X_test, y_test, batch_size, model, feature):
     return accuracy, precision, recall, FPR, cf_matrix, fpr, tpr, df_fi
 
 def neural_network_regression(X_test, y_test, batch_size, model, feature):
-    test_data =nn_data.Data(X_test, y_test[feature])
+    test_data =nn_data.Data(X_test, y_test[feature], y_test['identifier'].values)
     test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
 
     y_pred = []
@@ -196,7 +205,7 @@ def neural_network_regression(X_test, y_test, batch_size, model, feature):
 
     model.eval()
     with torch.no_grad():
-        for X, y in test_dataloader:
+        for X, y, ids in test_dataloader:
             outputs = model(X)
             #Spłaszczenie
             predicted = outputs.view(-1).numpy()
@@ -279,14 +288,14 @@ def recurrent_neural_network_classification(X_test, y_test, batch_size, seq_dim,
 
 
 def recurrent_neural_network_regression(X_test, y_test, batch_size, seq_dim, input_dim, model, feature):
-    test_data =nn_data.DataRNN(X_test, y_test[feature], sequence_length=seq_dim)
+    test_data =nn_data.DataRNN(X_test, y_test[feature], y_test['identifier'].values, sequence_length=seq_dim)
     test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
-    
-    y_pred = []
-    y_test = []
 
+    y_pred = []
+    y_test_list = []
+    identifiers_list = []
     model.eval()
-    for features, y in test_dataloader:
+    for features, y, identifiers in test_dataloader:
         features = Variable(features.view(-1, seq_dim, input_dim))
         
         outputs = model(features)
@@ -294,13 +303,16 @@ def recurrent_neural_network_regression(X_test, y_test, batch_size, seq_dim, inp
         # Konwersja y do płaskiej postaci
         y = y.view(-1).numpy()
         y_pred.append(predicted)
-        y_test.append(y)
+        y_test_list.append(y)
+        identifiers_list.append(identifiers)
 
     y_pred_flat = np.array([item for sublist in y_pred for item in sublist])*100
-    y_test_flat = np.array([item for sublist in y_test for item in sublist])*100
-    #create dataframe from y_pred and y_test
+    y_test_flat = np.array([item for sublist in y_test_list for item in sublist])*100
+    identifiers_list = np.array([item for sublist in identifiers_list for item in sublist])
+    #create dataframe from y_pred and y_test_list
     y_pred_df=pd.DataFrame({'Actual':np.array(y_test_flat),
-                           'Predicted':np.array(y_pred_flat)})
+                           'Predicted':np.array(y_pred_flat),
+                           'identifier': identifiers_list})
     
 
     mse=mean_squared_error(y_test_flat, y_pred_flat)
