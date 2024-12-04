@@ -13,3 +13,4 @@ results.ipynb
 *.tex
 *.pkl
 brain_ml
+*.pth
