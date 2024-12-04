@@ -1,5 +1,6 @@
 import pandas as pd
-import os 
+import os
+import shutil 
 
 class FileProcessor:
     def __init__(self, path):
@@ -97,6 +98,10 @@ class FileProcessor:
     def delete_specified_columns(self, filenames, columns):
         for filename in filenames:
             filename= os.path.join(self.path, filename)
+            #if file exists
+            if not os.path.isfile(filename):
+                print(f"Plik nie istnieje: {filename}")
+                return
             df = pd.read_csv(filename, sep='\t')
             for column in columns:
                 if column in df.columns:
@@ -107,6 +112,9 @@ class FileProcessor:
     def add_hemisphere_name(self, filenames, columns):
         for filename in filenames:
             path= os.path.join(self.path, filename)
+            if not os.path.isfile(filename):
+                print(f"Plik nie istnieje: {filename}")
+                return
             df = pd.read_csv(path, sep='\t')
             for column in columns:
                 if column in df.columns:
@@ -145,6 +153,9 @@ class FileProcessor:
 
     def get_indexes_for_cleaning_dataset(self, filename, data_files=True, norm_confirmed=1):
         filepath = os.path.join(self.path, filename)
+        if not os.path.isfile(filepath):
+            print(f"Plik nie istnieje: {filepath}")
+            return
         df = pd.read_csv(filepath, sep='\t')
         
         df.columns = df.columns.str.strip()  # Usuwa nadmiarowe białe znaki
@@ -192,6 +203,7 @@ class FileProcessor:
             path= os.path.join(self.path, filename)
             print("Plik",path)
             df = pd.read_csv(path, sep='\t')
+            print("rozmiar_przed", df.shape)
             df=df.drop(indexes_to_drop, inplace=False)
             print("rozmiar",df.shape)
             #save df to csv with delimiter ;
@@ -199,7 +211,7 @@ class FileProcessor:
             #check if folder_out exists
             if not os.path.exists(folder_out):
                 os.makedirs(folder_out)
-            
+
             df.to_csv(f'{folder_out}/{filename}', sep="\t", index=False)
             print('Zapisano plik', f'{folder_out}/{filename}')
 
