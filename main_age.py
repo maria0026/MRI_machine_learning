@@ -15,17 +15,19 @@ def main(args):
     trainer = train.ModelTrainer()
     
 
-    df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
+    #df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
+    df = pd.read_csv(f'data/{args.data_type}_norm_confirmed/all_concatenated.csv', sep='\t')
     identifier=df['identifier']
     df = df.drop(columns=args.columns_to_drop)
 
     if args.test_data_type!="None":
-        df_test = pd.read_csv(f'data/{args.test_data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
+        #df_test = pd.read_csv(f'data/{args.test_data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
+        df_test = pd.read_csv(f'data/{args.test_data_type}_norm_confirmed/all_concatenated.csv', sep='\t')
         identifier=df_test['identifier']
         df_test = df_test.drop(columns=args.columns_to_drop)
 
     mses, rmses, maes, count_outliers_lower, count_outliers_upper = [], [], [], [], []
-    input_dim = args.components_nr
+    input_dim = args.components_nr + 1
     loss_fn = nn.MSELoss()
 
     for i in range(args.n_crosval):
@@ -44,7 +46,7 @@ def main(args):
         X_train, X_val, X_test, scaler = preprocessor.standardize_data(X_train, X_val, X_test, column_to_copy=args.column_to_copy)
         joblib.dump(scaler, f'models/{args.model_name}_scaler_train_nr_{i}.pkl')
         y_test['identifier'] = identifier
-
+        
         #PCA
         pca_mri, train_pca, val_pca, test_pca, importance_df = reductor.principal_component_analysis(X_train, X_test, args.components_nr, args.n_most_important_features, X_val=X_val, validation=args.valid)
         joblib.dump(pca_mri, f'models/{args.model_name}_pca_mri_train_nr_{i}.pkl')
@@ -66,6 +68,8 @@ def main(args):
         train_principal_Df=preprocessor.add_sex_column(df, train_principal_Df)
         print(train_principal_Df)
         test_principal_Df=preprocessor.add_sex_column(df, test_principal_Df)
+        y_test['male']=test_principal_Df['male']
+
         if args.valid:
             val_principal_Df=preprocessor.add_sex_column(df, val_principal_Df)
 
@@ -87,12 +91,11 @@ def main(args):
             if args.valid:
                 X_val = X_val[X_val['male'] == sex_value]
                 X_val.rename(columns={'male': str(args.components_nr + 1)}, inplace=True)
-
-    
+        
         feature=args.label_names
         print("Odchylenie",np.std(y_train[feature[0]]))
         print("Srednia", np.mean(y_train[feature[0]]))
-        
+   
 
         if args.model_name=='forest':
             forest_param_dist = json.loads(args.forest_param_dist)
@@ -126,13 +129,15 @@ def main(args):
     
             mse, rmse, mae, results_df, feature_importance = test.svm_regression_model(X_test, y_test, clf, z=z, feature=feature)
             importance_df = pd.concat([feature_importance.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
-            identifiers_lower, identifiers_upper = test.svm_regression_model_quantiles(results_df, y_test, z_quantiles=z_quantiles, feature=feature, plot=args.plot, first_quantile=args.first_quantile, last_quantile=args.last_quantile)
+            identifiers_lower, identifiers_upper, sex_lower, sex_upper = test.svm_regression_model_quantiles(results_df, y_test, z_quantiles=z_quantiles, feature=feature, plot=args.plot, first_quantile=args.first_quantile, last_quantile=args.last_quantile)
             joblib.dump(clf, f'models/{args.model_name}_model_train_nr_{i}.pkl')
             joblib.dump(z, f'models/{args.model_name}_z_train_nr_{i}.pkl')
             joblib.dump(z_quantiles, f'models/{args.model_name}_z_quantiles_train_nr_{i}.pkl')
-            identifiers_lower=pd.Series(identifiers_lower, name='identifier_lower')
-            identifiers_upper=pd.Series(identifiers_upper, name='identifier_upper')
-            identifiers=pd.concat([identifiers_lower, identifiers_upper], axis=1)
+            identifiers_lower = pd.Series(identifiers_lower, name=f'identifier_lower_{i}')
+            sex_lower = pd.Series(sex_lower, name=f'male_lower_{i}')
+            identifiers_upper = pd.Series(identifiers_upper, name=f'identifier_upper_{i}')
+            sex_upper = pd.Series(sex_upper, name=f'male_upper_{i}')
+            identifiers = pd.concat([identifiers_lower, sex_lower, identifiers_upper, sex_upper], axis=1)
             count_outliers_lower.append(len(identifiers_lower))
             count_outliers_upper.append(len(identifiers_upper))
 
@@ -155,7 +160,7 @@ def main(args):
 
         if i==0:
             importance_df.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t')
-            results_df.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t')
+            results_df.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
             
             if args.model_name=='svm':
                 identifiers.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_identifiers_{args.model_name}_valid_{args.valid}.csv', sep='\t')
