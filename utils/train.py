@@ -62,7 +62,7 @@ class ModelTrainer:
         loss_values = []
         model.train()
         for epoch in range(num_epochs):
-            for X, y in train_dataloader:
+            for X, y, ids in train_dataloader:
 
                 optimizer.zero_grad()
                 pred = model(X)
@@ -98,7 +98,7 @@ class ModelTrainer:
         count = 0
         model.train()
         for epoch in range(num_epochs):
-            for i, (features, labels) in enumerate(train_dataloader):
+            for i, (features, labels, ids) in enumerate(train_dataloader):
 
                 train  = Variable(features.view(-1, seq_dim, input_dim))
                 labels = Variable(labels)
