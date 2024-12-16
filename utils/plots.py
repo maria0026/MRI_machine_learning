@@ -332,3 +332,22 @@ def age_prediction_gap(df, model, data_type, valid=False, test=''):
         plt.savefig(f'plots/{data_type}_{model}_gap_plot_{test}.png')
     plt.show()
     plt.show()
+
+def age_prediction_gap_2_atlases(df1, df2, atlas1, atlas2, model, data_type, valid=False, test=''):
+
+    list_actual_1= [column for column in df1.columns if 'Actual' in column][0]
+    list_predicted = [column for column in df1.columns if 'Predicted' in column][0]
+    list_actual_2 = [column for column in df2.columns if 'Actual' in column][0]
+    list_predicted_2 = [column for column in df2.columns if 'Predicted' in column][0]
+    gap_1 = df1[list_predicted]-df1[list_actual_1]
+    gap_2 = df2[list_predicted_2]-df2[list_actual_2]
+    plt.figure(figsize=(10, 5))
+    #plt.plot(df1[list_actual_1], gap_1, 'o', alpha=0.5, label=f'{atlas1}')
+    #plt.plot(df2[list_actual_2], gap_2, 'o', alpha=0.5, label=f'{atlas2}')
+    plt.scatter(gap_1, gap_2, alpha=0.5)
+    plt.xlabel(f'Age gap (years) {atlas2}', fontsize=12)
+    plt.ylabel(f'Age gap (years) {atlas1}', fontsize=12)
+    plt.legend()
+    plt.show()
+
+
