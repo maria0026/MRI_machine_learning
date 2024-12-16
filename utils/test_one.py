@@ -12,6 +12,8 @@ def svm_regression(clf, X_test, y_test, z=None, z_quantiles=None, feature=None, 
 
     if plot:
         plt.plot(y_test[feature], y_pred, 'o', color='b', alpha=0.5, label='Predicted')
+        plt.xlabel("Actual age")
+        plt.ylabel("Predicted age")
         plt.savefig(f'plots/quantiles_{nr_of_fold}.png')
         plt.show()
         

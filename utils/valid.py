@@ -75,9 +75,8 @@ def svm_regression_model(X_val, y_val, clf, feature, plot=False):
         )
 
         plt.legend()
-        plt.xlabel("x")
-        plt.ylabel("y")
-        _ = plt.title("Quantiles of heteroscedastic Normal distributed target")
+        plt.xlabel("Actual age")
+        plt.ylabel("Predicted age")
         plt.savefig('plots/quantiles_valid.png')
         plt.show()
 
