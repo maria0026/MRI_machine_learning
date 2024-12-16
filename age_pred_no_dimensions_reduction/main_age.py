@@ -9,7 +9,6 @@ import sys
 import os
 import torch
 from sklearn.model_selection import train_test_split
-sys.path.append('../')
 from utils import prepare_dataset, train, valid, test, nn_data
 
 
@@ -17,7 +16,7 @@ def main(args):
 
     preprocessor = prepare_dataset.DatasetPreprocessor()
     trainer = train.ModelTrainer()
-    model_path=f'models/{args.atlas}/{args.model_name}'
+    model_path=f'models/{args.atlas}/{args.model_name}_{args.data_type}_valid_{args.valid}'
     if not os.path.exists(model_path):
         os.makedirs(model_path)
 
@@ -108,7 +107,8 @@ def main(args):
             train_dataloader = nn_data.load_fnn_data(X_train, y_train, args.batch_size, feature)
             model = trainer.feed_forward_neural_network(train_dataloader, input_dim, args.fnn_hidden_dim, args.output_dim, args.fnn_learning_rate, loss_fn, args.num_epochs, args.fnn_momentum, args.fnn_weight_decay)
             mse, rmse, mae, results_df, feature_importance = test.neural_network_regression(X_test, y_test, args.batch_size, model,feature)
-            torch.save(model.state_dict(), f'{model_path}/model_train_nr_{i}.pkl')
+            #torch.save(model, f'{model_path}/model_train_nr_{i}.pth')
+            torch.save(model.state_dict(), f'{model_path}/model_train_nr_{i}.pth')
             #importance_df = pd.concat([feature_importance.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
 
         elif args.model_name=='rnn':
@@ -117,7 +117,7 @@ def main(args):
             train_dataloader = nn_data.load_rnn_data(X_train, y_train, args.batch_size, feature)
             model = trainer.recurrent_neural_network(train_dataloader, args.rnn_seq_dim, input_dim, args.rnn_hidden_dim, args.rnn_layer_dim, args.output_dim, args.rnn_learning_rate, loss_fn, args.num_epochs, args.rnn_weight_decay)
             mse, rmse, mae, results_df = test.recurrent_neural_network_regression(X_test, y_test, args.batch_size, args.rnn_seq_dim, input_dim, model, feature)
-            torch.save(model, f'{model_path}/model_train_nr_{i}.pth' )
+            torch.save(model.state_dict(), f'{model_path}/model_train_nr_{i}.pth')
 
         results_directory=f'{args.results_directory}/{args.atlas}'
         if not os.path.exists(results_directory):
@@ -156,12 +156,12 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("parser for age preidction")
-    parser.add_argument("--atlas", nargs="?", default="ASEG", help="atlas", type=str)
+    parser.add_argument("--atlas", nargs="?", default="DKT", help="atlas", type=str)
     parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--valid", nargs="?", default=1, help="create valid set: 0/1", type=bool)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)
-    parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
     parser.add_argument("--sex_subset", nargs="?", default="all", help="Choose the sex subset: all/female/male", type=str)
     parser.add_argument("--division_by_total_volume", nargs="?", default=1, help="Divide volumetric data by Estimated_Total_Intracranial_Volume: 1/0", type=bool)
     parser.add_argument("--n_most_important_features", nargs="?", default=20, help="Choose the number of extracting features that load into components")
@@ -193,7 +193,7 @@ if __name__ == "__main__":
     parser.add_argument("--results_directory", nargs="?", default="results", help="Directory for results", type=str)
     parser.add_argument("--label_names", nargs="?", default=["age"], help="Predicted parameters, list", type=list)
     parser.add_argument("--column_to_copy", nargs="?", default=['male'], help="Columns to copy", type=list)
-    parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female'], help="Columns to drop", type=list)
+    parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)
     parser.add_argument("--first_quantile", nargs="?", default=0.01, help="First quantile for svm regression", type=float)
     parser.add_argument("--last_quantile", nargs="?", default=0.99, help="Last quantile for svm regression", type=float)
     parser.add_argument("--plot", nargs="?", default=0, help="Plot results", type=bool)
