@@ -234,7 +234,7 @@ def distribution(train_pca, test_pca):
 def age_prediction_function(df, model, data_type, valid=False, test=''):
     # Tworzenie figury z odpowiednim rozmiarem
     fig, axs = plt.subplots(2, 3, figsize=(15, 7))
-    fig.suptitle(f'Actual vs Predicted Age by {model}', fontsize=16)
+    #fig.suptitle(f'Chronological vs Predicted Age by {model}', fontsize=16)
     list_actual = [column for column in df.columns if 'Actual' in column]
     list_predicted = [column for column in df.columns if 'Predicted' in column]
 
@@ -244,7 +244,7 @@ def age_prediction_function(df, model, data_type, valid=False, test=''):
     for i in range(len(list_actual)):
         ax = axs[i // 3, i % 3]  # Pobieranie odpowiedniego podwykresu (2x3 layout)
         ax.plot(df[list_actual[i]], df[list_predicted[i]], 'o', alpha=0.3)
-        ax.set_xlabel('Actual Age (years)', fontsize=12)
+        ax.set_xlabel('Chronological Age (years)', fontsize=12)
         ax.set_ylabel('Predicted Age (years)', fontsize=12)
         ax.set_title(f'Training {i + 1}', fontsize=14)
         ax.tick_params(axis='both', labelsize=10)
@@ -269,9 +269,9 @@ def age_prediction_function(df, model, data_type, valid=False, test=''):
     #add line y=x
     ax.plot(unique_actual, unique_actual, "b--", color='m', label='y=x')
     ax.legend()
-    ax.set_xlabel('Actual Age (years)')
+    ax.set_xlabel('Chronological Age (years)')
     ax.set_ylabel('Predicted Age (years)')
-    ax.set_title(f'Actual vs Predicted Age by {model}')
+    ax.set_title(f'All trains by {model}')
 
 
     fig.tight_layout()  
@@ -294,7 +294,7 @@ def age_prediction_gap(df, model, data_type, valid=False, test=''):
     for i in range(len(list_actual)):
         ax = axs[i // 3, i % 3]  # Pobieranie odpowiedniego podwykresu (2x3 layout)
         ax.plot(df[list_actual[i]], df[list_predicted[i]]-df[list_actual[i]],  'o', alpha=0.3, color='orange')
-        ax.set_xlabel('Actual Age (years)', fontsize=12)
+        ax.set_xlabel('Chronological Age (years)', fontsize=12)
         ax.set_ylabel('Age gap (years)', fontsize=12)
         ax.set_title(f'Training {i + 1}', fontsize=14)
         ax.tick_params(axis='both', labelsize=10)
@@ -320,9 +320,9 @@ def age_prediction_gap(df, model, data_type, valid=False, test=''):
     ax.plot(unique_actual, p(unique_actual), "r--", label='y=%.2fx² + %.2fx + %.2f' % (z[0], z[1], z[2]))
 
     ax.legend()
-    ax.set_xlabel('Actual Age (years)')
+    ax.set_xlabel('Chronological Age (years)')
     ax.set_ylabel('Age gap (years)')
-    ax.set_title(f'Actual vs Predicted Age by {model}')
+    ax.set_title(f'Chronological vs Predicted Age by {model}')
 
 
     fig.tight_layout()  

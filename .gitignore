@@ -14,3 +14,5 @@ results.ipynb
 *.pkl
 brain_ml
 *.pth
+plots/age_distribution_by_sex.jpg
+*.tiff
