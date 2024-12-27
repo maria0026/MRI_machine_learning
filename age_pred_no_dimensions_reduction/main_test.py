@@ -61,29 +61,32 @@ def main(args):
 
         if i==0:
             results_df.to_csv(f'{results_directory}/test_{args.data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
-            feature_importance.to_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t')
+            if args.model_name=='svm':
+                feature_importance.to_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t')
+
         else:
             results_df_old = pd.read_csv(f'{results_directory}/test_{args.data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t')
             results_df = pd.concat([results_df_old, results_df], axis = 1)
             results_df.to_csv(f'{results_directory}/test_{args.data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
             #change names of columns
-            feature_importance.columns=[f'{col}_{i}' for col in feature_importance.columns]
-            importance_df_old = pd.read_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index_col=0)
-            importance_df = pd.concat([importance_df_old, feature_importance], axis = 1)
-            if i==args.nr_of_train-1:
-                df_imp=importance_df.copy()
-                feature_cols = [col for col in df_imp.columns if 'feature_name' not in col]
-                df_imp = importance_df[feature_cols].copy()
-                df_mean_std=df_imp.copy()
-                df_mean_std['mean']=df_imp.mean(axis=1)
-                df_mean_std['std']=df_imp.std(axis=1)
-                print(importance_df)
-                print("nowy", df_mean_std)
-                df_mean_std['feature_name']=importance_df['feature_name']
-                df_mean_std.sort_values(by='mean', ascending=False, inplace=True)
-                importance_df=df_mean_std
+            if args.model_name=='svm':
+                feature_importance.columns=[f'{col}_{i}' for col in feature_importance.columns]
+                importance_df_old = pd.read_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index_col=0)
+                importance_df = pd.concat([importance_df_old, feature_importance], axis = 1)
+                if i==args.nr_of_train-1:
+                    df_imp=importance_df.copy()
+                    feature_cols = [col for col in df_imp.columns if 'feature_name' not in col]
+                    df_imp = importance_df[feature_cols].copy()
+                    df_mean_std=df_imp.copy()
+                    df_mean_std['mean']=df_imp.mean(axis=1)
+                    df_mean_std['std']=df_imp.std(axis=1)
+                    print(importance_df)
+                    print("nowy", df_mean_std)
+                    df_mean_std['feature_name']=importance_df['feature_name']
+                    df_mean_std.sort_values(by='mean', ascending=False, inplace=True)
+                    importance_df=df_mean_std
 
-            importance_df.to_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=True)
+                importance_df.to_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=True)
 
 
         mses.append(mse)
@@ -93,14 +96,14 @@ def main(args):
 
     print("Mean squared error", np.mean(mses), np.std(mses))
     print("Root mean squared error", np.mean(rmses), np.std(rmses))
-    print("Mean absolute error", np.mean(maes), np.std(maes))
+    print("Mean absolute error", round(np.mean(maes), 2), "± ", round(np.std(maes),2))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("parser for age preidction")
-    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
-    parser.add_argument("--atlas", nargs="?", default="APARC", help="atlas", type=str)
-    parser.add_argument("--valid", nargs="?", default=1, help="create valid set: 0/1", type=bool)
-    parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--data_type", nargs="?", default="all", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--atlas", nargs="?", default="a2009", help="atlas", type=str)
+    parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
+    parser.add_argument("--model_name", nargs="?", default="rnn", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--test_one", nargs="?", default=0, help="Test one case", type=bool)
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)
     parser.add_argument("--division_by_total_volume", nargs="?", default=1, help="Divide volumetric data by Estimated_Total_Intracranial_Volume: 1/0", type=bool)
