@@ -16,3 +16,4 @@ brain_ml
 *.pth
 plots/age_distribution_by_sex.jpg
 *.tiff
+*.fish
