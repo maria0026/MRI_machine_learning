@@ -23,8 +23,16 @@ def main(args):
                 df_gap_all=pd.concat([df_gap_all, df_gap], axis=1)
     print(df_gap_all)
     corr=df_gap_all.corr(method='spearman')
-    sns.heatmap(corr)
-    plt.title(f'correlations of age gap between atlases')
+    #sns.heatmap(corr)
+    ax = sns.heatmap(corr)
+    #plt.title(f'correlations of age gap between atlases')
+    plt.xticks(fontsize=14, rotation=45)  # You can adjust rotation if labels overlap
+    plt.yticks(fontsize=14, rotation=0)
+
+    #plt.xlabel('Atlases', fontsize=14)  # Optional, if you set axis labels
+    #plt.ylabel('Atlases', fontsize=14)
+    colorbar = ax.collections[0].colorbar
+    colorbar.ax.tick_params(labelsize=16)
     plt.show()
         
 
