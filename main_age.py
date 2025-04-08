@@ -13,25 +13,22 @@ def main(args):
     preprocessor = prepare_dataset.DatasetPreprocessor()
     reductor = dimensions_reduction.DimensionsReductor()
     trainer = train.ModelTrainer()
+    mses, rmses, maes, count_outliers_lower, count_outliers_upper = [], [], [], [], []
+    input_dim = args.components_nr + 1
+    loss_fn = nn.MSELoss()
     
-
-    #df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
-    df = pd.read_csv(f'data/{args.data_type}_norm_confirmed/all_concatenated.csv', sep='\t')
+    df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
+    #df = pd.read_csv(f'data/{args.data_type}_norm_confirmed/all_concatenated.csv', sep='\t')
     identifier=df['identifier']
     df = df.drop(columns=args.columns_to_drop)
 
     if args.test_data_type!="None":
-        #df_test = pd.read_csv(f'data/{args.test_data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
-        df_test = pd.read_csv(f'data/{args.test_data_type}_norm_confirmed/all_concatenated.csv', sep='\t')
+        df_test = pd.read_csv(f'data/{args.test_data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
+        #df_test = pd.read_csv(f'data/{args.test_data_type}_norm_confirmed/all_concatenated.csv', sep='\t')
         identifier=df_test['identifier']
         df_test = df_test.drop(columns=args.columns_to_drop)
 
-    mses, rmses, maes, count_outliers_lower, count_outliers_upper = [], [], [], [], []
-    input_dim = args.components_nr + 1
-    loss_fn = nn.MSELoss()
-
     for i in range(args.n_crosval):
-
         if args.division_by_total_volume:
             df = preprocessor.divide_by_total_volume(df)
             if args.test_data_type!="None":
