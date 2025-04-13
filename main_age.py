@@ -5,26 +5,37 @@ import argparse
 from scipy.stats import randint, uniform
 import json
 import joblib
+from sklearn.model_selection import train_test_split
 from utils import dimensions_reduction, prepare_dataset, train, valid, test, nn_data
-
+import os
+import torch
 
 def main(args):
 
     preprocessor = prepare_dataset.DatasetPreprocessor()
     reductor = dimensions_reduction.DimensionsReductor()
     trainer = train.ModelTrainer()
+    tester = test.ModelTester()
     mses, rmses, maes, count_outliers_lower, count_outliers_upper = [], [], [], [], []
     input_dim = args.components_nr + 1
     loss_fn = nn.MSELoss()
+    model_path=f'models/{args.model_name}_{args.data_type}_valid_{args.valid}'
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
     
     df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
-    #df = pd.read_csv(f'data/{args.data_type}_norm_confirmed/all_concatenated.csv', sep='\t')
+
+    leave_ids = pd.read_csv("data/leave_out_identifiers.csv")['identifier']
+    df_leave = df[df['identifier'].isin(leave_ids)]
+    df = df[~df['identifier'].isin(leave_ids)]
+
+    df_leave.to_csv(f'data/{args.data_type}_norm_confirmed_normal/leave_out.csv', sep='\t', index=False)
     identifier=df['identifier']
+    print(df['identifier'])
     df = df.drop(columns=args.columns_to_drop)
 
     if args.test_data_type!="None":
         df_test = pd.read_csv(f'data/{args.test_data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
-        #df_test = pd.read_csv(f'data/{args.test_data_type}_norm_confirmed/all_concatenated.csv', sep='\t')
         identifier=df_test['identifier']
         df_test = df_test.drop(columns=args.columns_to_drop)
 
@@ -41,12 +52,12 @@ def main(args):
             y_test = df_test[args.label_names]
 
         X_train, X_val, X_test, scaler = preprocessor.standardize_data(X_train, X_val, X_test, column_to_copy=args.column_to_copy)
-        joblib.dump(scaler, f'models/{args.model_name}_scaler_train_nr_{i}.pkl')
+        joblib.dump(scaler, f'{model_path}/scaler_train_nr_{i}.pkl')
         y_test['identifier'] = identifier
         
         #PCA
         pca_mri, train_pca, val_pca, test_pca, importance_df = reductor.principal_component_analysis(X_train, X_test, args.components_nr, args.n_most_important_features, X_val=X_val, validation=args.valid)
-        joblib.dump(pca_mri, f'models/{args.model_name}_pca_mri_train_nr_{i}.pkl')
+        joblib.dump(pca_mri, f'{model_path}_pca_mri_train_nr_{i}.pkl')
         explained_variance_ratio = pca_mri.explained_variance_ratio_
         formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
         print('Explained variability per principal component: {}'.format(formatted_explained_variance))
@@ -109,7 +120,8 @@ def main(args):
             print(feature_importances.index)
             print("importances", feature_importances.values)
             importance_df['comp_imp'] = feature_importances.values
-            mse, rmse, mae, results_df = test.random_forest_regression_model(X_test, y_test, feature, rf)
+            mse, rmse, mae, results_df = tester.random_forest_regression_model(X_test, y_test, feature, rf)
+            joblib.dump(rf, f'{model_path}/model_train_nr_{i}.pkl')
 
 
         elif args.model_name=="svm":
@@ -124,12 +136,12 @@ def main(args):
                 z=None
                 z_quantiles=None
     
-            mse, rmse, mae, results_df, feature_importance = test.svm_regression_model(X_test, y_test, clf, z=z, feature=feature)
+            mse, rmse, mae, results_df, feature_importance = tester.svm_regression_model(X_test, y_test, clf, z=z, feature=feature)
             importance_df = pd.concat([feature_importance.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
-            identifiers_lower, identifiers_upper, sex_lower, sex_upper = test.svm_regression_model_quantiles(results_df, y_test, z_quantiles=z_quantiles, feature=feature, plot=args.plot, first_quantile=args.first_quantile, last_quantile=args.last_quantile)
-            joblib.dump(clf, f'models/{args.model_name}_model_train_nr_{i}.pkl')
-            joblib.dump(z, f'models/{args.model_name}_z_train_nr_{i}.pkl')
-            joblib.dump(z_quantiles, f'models/{args.model_name}_z_quantiles_train_nr_{i}.pkl')
+            identifiers_lower, identifiers_upper, sex_lower, sex_upper = tester.svm_regression_model_quantiles(results_df, y_test, z_quantiles=z_quantiles, feature=feature, plot=args.plot, first_quantile=args.first_quantile, last_quantile=args.last_quantile)
+            joblib.dump(clf, f'{model_path}/model_train_nr_{i}.pkl')
+            joblib.dump(z, f'{model_path}/z_train_nr_{i}.pkl')
+            joblib.dump(z_quantiles, f'{model_path}/z_quantiles_train_nr_{i}.pkl')
             identifiers_lower = pd.Series(identifiers_lower, name=f'identifier_lower_{i}')
             sex_lower = pd.Series(sex_lower, name=f'male_lower_{i}')
             identifiers_upper = pd.Series(identifiers_upper, name=f'identifier_upper_{i}')
@@ -144,16 +156,17 @@ def main(args):
             y_test[feature] = y_test[feature]/100
             train_dataloader = nn_data.load_fnn_data(X_train, y_train, args.batch_size, feature)
             model = trainer.feed_forward_neural_network(train_dataloader, input_dim, args.fnn_hidden_dim, args.output_dim, args.fnn_learning_rate, loss_fn, args.num_epochs, args.fnn_momentum, args.fnn_weight_decay)
-            mse, rmse, mae, results_df, feature_importance = test.neural_network_regression(X_test, y_test, args.batch_size, model,feature)
+            mse, rmse, mae, results_df, feature_importance = tester.neural_network_regression(X_test, y_test, args.batch_size, model,feature)
             importance_df = pd.concat([feature_importance.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
+            torch.save(model.state_dict(), f'{model_path}/model_train_nr_{i}.pth')
 
         elif args.model_name=='rnn':
             y_train[feature] = y_train[feature]/100
             y_test[feature] = y_test[feature]/100
             train_dataloader = nn_data.load_rnn_data(X_train, y_train, args.batch_size, feature)
             model = trainer.recurrent_neural_network(train_dataloader, args.rnn_seq_dim, input_dim, args.rnn_hidden_dim, args.rnn_layer_dim, args.output_dim, args.rnn_learning_rate, loss_fn, args.num_epochs, args.rnn_weight_decay)
-            mse, rmse, mae, results_df = test.recurrent_neural_network_regression(X_test, y_test, args.batch_size, args.rnn_seq_dim, input_dim, model, feature)
-            
+            mse, rmse, mae, results_df = tester.recurrent_neural_network_regression(X_test, y_test, args.batch_size, args.rnn_seq_dim, input_dim, model, feature)
+            torch.save(model.state_dict(), f'{model_path}/model_train_nr_{i}.pth')
 
         if i==0:
             importance_df.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t')
@@ -182,7 +195,7 @@ def main(args):
 
     print("Mean squared error", np.mean(mses), np.std(mses))
     print("Root mean squared error", np.mean(rmses), np.std(rmses))
-    print("Mean absolute error", np.mean(maes), np.std(maes))
+    print("Mean absolute error holdout", round(np.mean(maes), 2), "± ", round(np.std(maes),2))
 
     count_outliers_lower = np.array([x if x is not None else np.nan for x in count_outliers_lower])
     count_outliers_upper = np.array([x if x is not None else np.nan for x in count_outliers_upper])
@@ -192,11 +205,11 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("parser for age preidction")
-    parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--model_name", nargs="?", default="forest", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)
-    parser.add_argument("--valid", nargs="?", default=1, help="create valid set: 0/1", type=bool)
+    parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
     parser.add_argument("--sex_subset", nargs="?", default="all", help="Choose the sex subset: all/female/male", type=str)
     parser.add_argument("--division_by_total_volume", nargs="?", default=1, help="Divide volumetric data by Estimated_Total_Intracranial_Volume: 1/0", type=bool)
     parser.add_argument("--n_most_important_features", nargs="?", default=20, help="Choose the number of extracting features that load into components")
