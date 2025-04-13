@@ -267,7 +267,7 @@ def age_prediction_function(df, model, data_type, valid=False, test=''):
 
     ax.plot(unique_actual, p(unique_actual), "r--", label='y=%.2fx² + %.2fx + %.2f' % (z[0], z[1], z[2]))
     #add line y=x
-    ax.plot(unique_actual, unique_actual, "b--", color='m', label='y=x')
+    ax.plot(unique_actual, unique_actual, "b--", color='gray', label='y=x')
     ax.legend()
     ax.set_xlabel('Chronological Age (years)', fontsize=16)
     ax.set_ylabel('Predicted Age (years)', fontsize=16)
