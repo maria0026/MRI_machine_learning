@@ -8,13 +8,13 @@ from utils import nn_data, nn_model
 
 def main(args):
 
+    tester = test.ModelTester()
     df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out.csv', sep='\t')
-    print(df.shape)
+    print(df['identifier'])
     identifier=df['identifier']
     df = df.drop(columns=args.columns_to_drop, errors='ignore')
     input_dim = df.shape[1]-1
 
-    #model_path=f'models/{args.atlas}/{args.model_name}'
     model_path=f'models/{args.atlas}/{args.model_name}_{args.data_type}_valid_{args.valid}'
     results_directory=f'{args.results_directory}/{args.atlas}'
     mses, rmses, maes= [], [], []
@@ -33,8 +33,7 @@ def main(args):
         
         if args.model_name=='forest':
             rf= joblib.load( f'{model_path}/model_train_nr_{i}.pkl')
-            mse, rmse, mae, results_df = test.random_forest_regression_model(X_test, y_test, feature, rf)
-
+            mse, rmse, mae, results_df = tester.random_forest_regression_model(X_test, y_test, feature, rf)
 
 
         elif args.model_name=="svm":
@@ -43,20 +42,20 @@ def main(args):
                 z= joblib.load(f'models/{args.model_name}_z_train_nr_{i}.pkl')
             else:
                 z=None
-            mse, rmse, mae, results_df, feature_importance = test.svm_regression_model(X_test, y_test, clf, z=z, feature=feature, comp=False)
+            mse, rmse, mae, results_df, feature_importance = tester.svm_regression_model(X_test, y_test, clf, z=z, feature=feature, comp=False)
            
 
         elif args.model_name=='fnn':
             y_test[feature] = y_test[feature]/100
             model = nn_model.NeuralNetwork(input_dim, args.fnn_hidden_dim, args.output_dim)
             model.load_state_dict(torch.load(f'{model_path}/model_train_nr_{i}.pth', weights_only=True))
-            mse, rmse, mae, results_df, feature_importance = test.neural_network_regression(X_test, y_test, args.batch_size, model,feature)
+            mse, rmse, mae, results_df, feature_importance = tester.neural_network_regression(X_test, y_test, args.batch_size, model,feature)
 
         elif args.model_name=='rnn':
             y_test[feature] = y_test[feature]/100
             model = nn_model.RNNModel(input_dim, args.rnn_hidden_dim, args.rnn_layer_dim, args.output_dim)
             model.load_state_dict(torch.load(f'{model_path}/model_train_nr_{i}.pth', weights_only=True))
-            mse, rmse, mae, results_df = test.recurrent_neural_network_regression(X_test, y_test, args.batch_size, args.rnn_seq_dim, input_dim, model, feature)
+            mse, rmse, mae, results_df = tester.recurrent_neural_network_regression(X_test, y_test, args.batch_size, args.rnn_seq_dim, input_dim, model, feature)
 
 
         if i==0:
@@ -80,14 +79,13 @@ def main(args):
                     df_mean_std=df_imp.copy()
                     df_mean_std['mean']=df_imp.mean(axis=1)
                     df_mean_std['std']=df_imp.std(axis=1)
-                    print(importance_df)
-                    print("nowy", df_mean_std)
                     df_mean_std['feature_name']=importance_df['feature_name']
                     df_mean_std.sort_values(by='mean', ascending=False, inplace=True)
                     importance_df=df_mean_std
 
                 importance_df.to_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=True)
 
+            print("MAE:", mae)
 
         mses.append(mse)
         rmses.append(rmse)
@@ -96,14 +94,14 @@ def main(args):
 
     print("Mean squared error", np.mean(mses), np.std(mses))
     print("Root mean squared error", np.mean(rmses), np.std(rmses))
-    print("Mean absolute error", round(np.mean(maes), 2), "± ", round(np.std(maes),2))
+    print("Mean absolute error holdout", round(np.mean(maes), 2), "± ", round(np.std(maes),2))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("parser for age preidction")
-    parser.add_argument("--data_type", nargs="?", default="all", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
-    parser.add_argument("--atlas", nargs="?", default="a2009", help="atlas", type=str)
-    parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
-    parser.add_argument("--model_name", nargs="?", default="rnn", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--atlas", nargs="?", default="a2009_ASEG", help="atlas", type=str)
+    parser.add_argument("--valid", nargs="?", default=1, help="create valid set: 0/1", type=bool)
+    parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--test_one", nargs="?", default=0, help="Test one case", type=bool)
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)
     parser.add_argument("--division_by_total_volume", nargs="?", default=1, help="Divide volumetric data by Estimated_Total_Intracranial_Volume: 1/0", type=bool)

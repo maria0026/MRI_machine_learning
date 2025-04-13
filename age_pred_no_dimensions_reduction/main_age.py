@@ -9,19 +9,28 @@ import sys
 import os
 import torch
 from sklearn.model_selection import train_test_split
-from utils import prepare_dataset, train, valid, test, nn_data
+from utils import prepare_dataset, train, valid, test, nn_data, save_results
 
 
 def main(args):
 
     preprocessor = prepare_dataset.DatasetPreprocessor()
     trainer = train.ModelTrainer()
+    tester = test.ModelTester()
     model_path=f'models/{args.atlas}/{args.model_name}_{args.data_type}_valid_{args.valid}'
     if not os.path.exists(model_path):
         os.makedirs(model_path)
 
     df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/all_concatenated.csv', sep='\t')
-    df, df_leave = train_test_split(df, test_size=0.15, random_state=42)
+    
+    
+    if os.path.exists("data/leave_out_identifiers.csv"):
+        leave_ids = pd.read_csv("data/leave_out_identifiers.csv")['identifier']
+        df_leave = df[df['identifier'].isin(leave_ids)]
+        df = df[~df['identifier'].isin(leave_ids)]
+    else:
+        df, df_leave = train_test_split(df, test_size=0.15, random_state=42)
+        df_leave['identifier'].to_csv("data/leave_out_identifiers.csv", index=False)
     df_leave.to_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out.csv', sep='\t', index=False)
 
     identifier=df['identifier']
@@ -67,10 +76,7 @@ def main(args):
             forest_param_dist['min_samples_leaf'] = randint(*forest_param_dist['min_samples_leaf'])
             rf = trainer.random_forrest_regression_model(X_train, y_train, forest_param_dist, *feature)
             best_rf = rf.best_estimator_
-            feature_importances = pd.Series(best_rf.feature_importances_, index=X_train.columns).sort_values(ascending=False)
-            print(feature_importances)
-            #importance_df['comp_imp'] = feature_importances.values
-            mse, rmse, mae, results_df = test.random_forest_regression_model(X_test, y_test, feature, rf)
+            mse, rmse, mae, results_df = tester.random_forest_regression_model(X_test, y_test, feature, rf)
             joblib.dump(rf, f'{model_path}/model_train_nr_{i}.pkl')
 
 
@@ -86,9 +92,8 @@ def main(args):
                 z=None
                 z_quantiles=None
     
-            mse, rmse, mae, results_df, feature_importance = test.svm_regression_model(X_test, y_test, clf, z=z, feature=feature)
-            #importance_df = pd.concat([feature_importance.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
-            identifiers_lower, identifiers_upper, sex_lower, sex_upper = test.svm_regression_model_quantiles(results_df, y_test, z_quantiles=z_quantiles, feature=feature, plot=args.plot, first_quantile=args.first_quantile, last_quantile=args.last_quantile)
+            mse, rmse, mae, results_df, feature_importance = tester.svm_regression_model(X_test, y_test, clf, z=z, feature=feature)
+            identifiers_lower, identifiers_upper, sex_lower, sex_upper = tester.svm_regression_model_quantiles(results_df, y_test, z_quantiles=z_quantiles, feature=feature, plot=args.plot, first_quantile=args.first_quantile, last_quantile=args.last_quantile)
             joblib.dump(clf, f'{model_path}/model_train_nr_{i}.pkl')
             joblib.dump(z, f'{model_path}/z_train_nr_{i}.pkl')
             joblib.dump(z_quantiles, f'{model_path}/z_quantiles_train_nr_{i}.pkl')
@@ -106,17 +111,16 @@ def main(args):
             y_test[feature] = y_test[feature]/100
             train_dataloader = nn_data.load_fnn_data(X_train, y_train, args.batch_size, feature)
             model = trainer.feed_forward_neural_network(train_dataloader, input_dim, args.fnn_hidden_dim, args.output_dim, args.fnn_learning_rate, loss_fn, args.num_epochs, args.fnn_momentum, args.fnn_weight_decay)
-            mse, rmse, mae, results_df, feature_importance = test.neural_network_regression(X_test, y_test, args.batch_size, model,feature)
-            #torch.save(model, f'{model_path}/model_train_nr_{i}.pth')
+            mse, rmse, mae, results_df, feature_importance = tester.neural_network_regression(X_test, y_test, args.batch_size, model,feature)
             torch.save(model.state_dict(), f'{model_path}/model_train_nr_{i}.pth')
-            #importance_df = pd.concat([feature_importance.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
+            
 
         elif args.model_name=='rnn':
             y_train[feature] = y_train[feature]/100
             y_test[feature] = y_test[feature]/100
             train_dataloader = nn_data.load_rnn_data(X_train, y_train, args.batch_size, feature)
             model = trainer.recurrent_neural_network(train_dataloader, args.rnn_seq_dim, input_dim, args.rnn_hidden_dim, args.rnn_layer_dim, args.output_dim, args.rnn_learning_rate, loss_fn, args.num_epochs, args.rnn_weight_decay)
-            mse, rmse, mae, results_df = test.recurrent_neural_network_regression(X_test, y_test, args.batch_size, args.rnn_seq_dim, input_dim, model, feature)
+            mse, rmse, mae, results_df = tester.recurrent_neural_network_regression(X_test, y_test, args.batch_size, args.rnn_seq_dim, input_dim, model, feature)
             torch.save(model.state_dict(), f'{model_path}/model_train_nr_{i}.pth')
 
         results_directory=f'{args.results_directory}/{args.atlas}'
@@ -124,16 +128,11 @@ def main(args):
             os.makedirs(results_directory)
 
         if i==0:
-            #importance_df.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t')
             results_df.to_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
             
             if args.model_name=='svm':
                 identifiers.to_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_identifiers_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
         else:
-            #importance_df_old = pd.read_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index_col=0)
-            #importance_df = pd.concat([importance_df_old, importance_df], axis = 1)
-            #importance_df.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=True)
-
             results_df_old = pd.read_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t')
             results_df = pd.concat([results_df_old.reset_index(drop = True), results_df.reset_index(drop = True)], axis = 1)
             results_df.to_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
@@ -142,11 +141,25 @@ def main(args):
         mses.append(mse)
         rmses.append(rmse)
         maes.append(mae)
+        print("MAE:", mae)
+    mae_mean = round(np.mean(maes), 2)
+    mae_std = round(np.std(maes), 2)
+    '''
+    save_results.write_result_to_csv(
+    atlas=args.atlas,
+    model_name=args.model_name,
+    data_type=args.data_type,
+    mae_mean=mae_mean,
+    mae_std=mae_std,
+    csv_path=f'{args.results_directory}/model_results.csv',
+    column_indices=(2, 4)
+)
+'''
 
 
     print("Mean squared error", np.mean(mses), np.std(mses))
     print("Root mean squared error", np.mean(rmses), np.std(rmses))
-    print("Mean absolute error", np.mean(maes), np.std(maes))
+    print("Mean absolute error train", mae_mean, "± ", mae_std)
 
     count_outliers_lower = np.array([x if x is not None else np.nan for x in count_outliers_lower])
     count_outliers_upper = np.array([x if x is not None else np.nan for x in count_outliers_upper])
@@ -156,7 +169,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("parser for age preidction")
-    parser.add_argument("--atlas", nargs="?", default="DKT", help="atlas", type=str)
+    parser.add_argument("--atlas", nargs="?", default="a2009_ASEG", help="atlas", type=str)
     parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--valid", nargs="?", default=1, help="create valid set: 0/1", type=bool)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
@@ -165,7 +178,6 @@ if __name__ == "__main__":
     parser.add_argument("--sex_subset", nargs="?", default="all", help="Choose the sex subset: all/female/male", type=str)
     parser.add_argument("--division_by_total_volume", nargs="?", default=1, help="Divide volumetric data by Estimated_Total_Intracranial_Volume: 1/0", type=bool)
     parser.add_argument("--n_most_important_features", nargs="?", default=20, help="Choose the number of extracting features that load into components")
-    parser.add_argument("--components_nr", nargs="?", default=35, help="Number of components for principal component analysis", type=int)
     parser.add_argument("--n_crosval", nargs="?", default=5, help="Number of crossvalidation", type=int)
     parser.add_argument("--batch_size", nargs="?", default=64, help="Batch size", type=int)
     parser.add_argument("--num_epochs", nargs="?", default=100, help="Number of epochs", type=int)
