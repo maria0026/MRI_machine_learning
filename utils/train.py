@@ -14,6 +14,11 @@ from utils import nn_data, nn_model
 class ModelTrainer:
     def __init__(self):
         print("ModelTrainer initialized")
+        if torch.cuda.is_available():
+            print(f"CUDA is available! Device: {torch.cuda.get_device_name(0)}")
+            print(f"Number of devices: {torch.cuda.device_count()}")
+        else:
+            print("CUDA is not available.")
 
     def random_forest_model(self, X_train, y_train, param_dist, feature):
         rf = RandomForestClassifier(criterion='gini', max_features='sqrt')
