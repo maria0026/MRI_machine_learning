@@ -5,7 +5,6 @@ import argparse
 from scipy.stats import randint, uniform
 import json
 import joblib
-import sys
 import os
 import torch
 from sklearn.model_selection import train_test_split
@@ -17,13 +16,19 @@ def main(args):
     preprocessor = prepare_dataset.DatasetPreprocessor()
     trainer = train.ModelTrainer()
     tester = test.ModelTester()
+
+    mses, rmses, maes, count_outliers_lower, count_outliers_upper = [], [], [], [], []
+    
+    loss_fn = nn.MSELoss()
+
+
     model_path=f'models/{args.atlas}/{args.model_name}_{args.data_type}_valid_{args.valid}'
     if not os.path.exists(model_path):
         os.makedirs(model_path)
 
     df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/all_concatenated.csv', sep='\t')
     
-    
+
     if os.path.exists("data/leave_out_identifiers.csv"):
         leave_ids = pd.read_csv("data/leave_out_identifiers.csv")['identifier']
         df_leave = df[df['identifier'].isin(leave_ids)]
@@ -35,16 +40,13 @@ def main(args):
 
     identifier=df['identifier']
     df = df.drop(columns=args.columns_to_drop)
+    input_dim = df.shape[1]-1
 
     if args.test_data_type!="None":
         df_test = pd.read_csv(f'data/{args.test_data_type}_norm_confirmed/all_concatenated.csv', sep='\t')
         identifier=df_test['identifier']
         df_test = df_test.drop(columns=args.columns_to_drop)
 
-    
-    mses, rmses, maes, count_outliers_lower, count_outliers_upper = [], [], [], [], []
-    input_dim = df.shape[1]-1
-    loss_fn = nn.MSELoss()
 
     for i in range(args.n_crosval):
         '''
@@ -75,7 +77,6 @@ def main(args):
             forest_param_dist['max_depth'] = randint(*forest_param_dist['max_depth'])
             forest_param_dist['min_samples_leaf'] = randint(*forest_param_dist['min_samples_leaf'])
             rf = trainer.random_forrest_regression_model(X_train, y_train, forest_param_dist, *feature)
-            best_rf = rf.best_estimator_
             mse, rmse, mae, results_df = tester.random_forest_regression_model(X_test, y_test, feature, rf)
             joblib.dump(rf, f'{model_path}/model_train_nr_{i}.pkl')
 
@@ -84,7 +85,6 @@ def main(args):
             svm_param_dist = json.loads(args.svm_param_dist)
             svm_param_dist['C'] = randint(*svm_param_dist['C'])  
             svm_param_dist['gamma'] = uniform(*svm_param_dist['gamma']) 
-            
             clf = trainer.svm_regression_model(X_train, y_train, svm_param_dist, feature)
             if args.valid:
                 z, z_quantiles= valid.svm_regression_model(X_val, y_val, clf, feature, plot=args.plot)
@@ -142,8 +142,8 @@ def main(args):
         rmses.append(rmse)
         maes.append(mae)
         print("MAE:", mae)
-    mae_mean = round(np.mean(maes), 2)
-    mae_std = round(np.std(maes), 2)
+
+
     '''
     save_results.write_result_to_csv(
     atlas=args.atlas,
@@ -155,8 +155,8 @@ def main(args):
     column_indices=(2, 4)
 )
 '''
-
-
+    mae_mean = round(np.mean(maes), 2)
+    mae_std = round(np.std(maes), 2)
     print("Mean squared error", np.mean(mses), np.std(mses))
     print("Root mean squared error", np.mean(rmses), np.std(rmses))
     print("Mean absolute error train", mae_mean, "± ", mae_std)
@@ -169,7 +169,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("parser for age preidction")
-    parser.add_argument("--atlas", nargs="?", default="a2009_ASEG", help="atlas", type=str)
+    parser.add_argument("--atlas", nargs="?", default="APARC", help="atlas", type=str)
     parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--valid", nargs="?", default=1, help="create valid set: 0/1", type=bool)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)

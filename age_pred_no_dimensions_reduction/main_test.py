@@ -4,20 +4,20 @@ import joblib
 from utils import test
 import torch
 import numpy as np
-from utils import nn_data, nn_model
+from utils import nn_model
 
 def main(args):
 
     tester = test.ModelTester()
-    df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out.csv', sep='\t')
-    print(df['identifier'])
-    identifier=df['identifier']
-    df = df.drop(columns=args.columns_to_drop, errors='ignore')
-    input_dim = df.shape[1]-1
+    mses, rmses, maes= [], [], []
 
     model_path=f'models/{args.atlas}/{args.model_name}_{args.data_type}_valid_{args.valid}'
     results_directory=f'{args.results_directory}/{args.atlas}'
-    mses, rmses, maes= [], [], []
+
+    df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out.csv', sep='\t')
+    identifier=df['identifier']
+    df = df.drop(columns=args.columns_to_drop, errors='ignore')
+    input_dim = df.shape[1]-1
 
     for i in range(0, args.nr_of_train):
         X_test=df.drop(columns=args.label_names)
@@ -30,7 +30,6 @@ def main(args):
         y_test['identifier'] = identifier
         feature=args.label_names
 
-        
         if args.model_name=='forest':
             rf= joblib.load( f'{model_path}/model_train_nr_{i}.pkl')
             mse, rmse, mae, results_df = tester.random_forest_regression_model(X_test, y_test, feature, rf)
@@ -67,18 +66,16 @@ def main(args):
             results_df_old = pd.read_csv(f'{results_directory}/test_{args.data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t')
             results_df = pd.concat([results_df_old, results_df], axis = 1)
             results_df.to_csv(f'{results_directory}/test_{args.data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
-            #change names of columns
             if args.model_name=='svm':
                 feature_importance.columns=[f'{col}_{i}' for col in feature_importance.columns]
                 importance_df_old = pd.read_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index_col=0)
                 importance_df = pd.concat([importance_df_old, feature_importance], axis = 1)
+
                 if i==args.nr_of_train-1:
-                    df_imp=importance_df.copy()
-                    feature_cols = [col for col in df_imp.columns if 'feature_name' not in col]
-                    df_imp = importance_df[feature_cols].copy()
-                    df_mean_std=df_imp.copy()
-                    df_mean_std['mean']=df_imp.mean(axis=1)
-                    df_mean_std['std']=df_imp.std(axis=1)
+                    feature_cols = [col for col in importance_df.columns if 'feature_name' not in col]
+                    df_mean_std = importance_df[feature_cols].copy()
+                    df_mean_std['mean']=df_mean_std.mean(axis=1)
+                    df_mean_std['std']=df_mean_std.std(axis=1)
                     df_mean_std['feature_name']=importance_df['feature_name']
                     df_mean_std.sort_values(by='mean', ascending=False, inplace=True)
                     importance_df=df_mean_std
@@ -92,31 +89,24 @@ def main(args):
         maes.append(mae)
 
 
+    mae_mean = round(np.mean(maes), 2)
+    mae_std = round(np.std(maes), 2)
     print("Mean squared error", np.mean(mses), np.std(mses))
     print("Root mean squared error", np.mean(rmses), np.std(rmses))
-    print("Mean absolute error holdout", round(np.mean(maes), 2), "± ", round(np.std(maes),2))
+    print("Mean absolute error train", mae_mean, "± ", mae_std)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("parser for age preidction")
-    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
-    parser.add_argument("--atlas", nargs="?", default="a2009_ASEG", help="atlas", type=str)
-    parser.add_argument("--valid", nargs="?", default=1, help="create valid set: 0/1", type=bool)
+    parser = argparse.ArgumentParser("Parser for age prediction - testing on holdout set")
     parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
-    parser.add_argument("--test_one", nargs="?", default=0, help="Test one case", type=bool)
+    parser.add_argument("--atlas", nargs="?", default="APARC", help="Atlas used for feature extraction", type=str)
+    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--valid", nargs="?", default=1, help="Create valid set and detrend: 0 (no) /1 (yes)", type=bool)
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)
-    parser.add_argument("--division_by_total_volume", nargs="?", default=1, help="Divide volumetric data by Estimated_Total_Intracranial_Volume: 1/0", type=bool)
     parser.add_argument("--label_names", nargs="?", default=["age"], help="Predicted parameters, list", type=list)
     parser.add_argument("--column_to_copy", nargs="?", default=['male'], help="Columns to copy", type=list)
-    parser.add_argument("--first_quantile", nargs="?", default=0.01, help="First quantile for svm regression", type=float)
-    parser.add_argument("--last_quantile", nargs="?", default=0.99, help="Last quantile for svm regression", type=float)
     parser.add_argument("--batch_size", nargs="?", default=64, help="Batch size", type=int)
-    parser.add_argument("--plot", nargs="?", default=1, help="Plot results", type=bool)
     parser.add_argument("--nr_of_train", nargs="?", default=5, help="Number of train dataset", type=int)
     parser.add_argument("--results_directory", nargs="?", default="results", help="Directory for results", type=str)
-    parser.add_argument("--fnn_momentum", nargs="?", default=0.7, help="Momentum for feed forward neural network", type=float)
-    parser.add_argument("--fnn_weight_decay", nargs="?", default=0.01, help="Weight decay for feed forward neural network", type=float)
-    parser.add_argument("--fnn_learning_rate", nargs="?", default=0.075, help="Learning rate for feed forward neural network", type=float)
-    parser.add_argument("--rnn_learning_rate", nargs="?", default=1e-3, help="Learning rate for recurrent neural network", type=float)
     parser.add_argument("--fnn_hidden_dim", nargs="?", default=20, help="Hidden dimension for feed forward neural network", type=int)
     parser.add_argument("--rnn_hidden_dim", nargs="?", default=10, help="Hidden dimension for recurrent neural network", type=int)
     parser.add_argument("--rnn_layer_dim", nargs="?", default=1, help="Layer dimension for recurrent neural network", type=int)
