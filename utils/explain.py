@@ -23,19 +23,6 @@ def calculate_trends(df, column, X_feature_name):
     coefficients = huber.coef_
     intercept = huber.intercept_
 
-    '''
-    x_range = np.linspace(5, 85, 1000).reshape(-1, 1)  # Przykładowe punkty do przewidywania
-    y2 =  x_range**2 * coefficients[2] + x_range * coefficients[1] + coefficients[0]+ intercept
-    y_ransac = model.predict(x_range)
-    # Rysowanie wyników
-    plt.scatter(X, y, color='blue', alpha=0.4, label='Dane')
-    plt.plot(x_range, y_ransac, color='red', label=f'Wielomian stopnia {degree}')
-    #plt.scatter(new_x, new_y, color='red', label=f'po odjęciu wielomianu stopnia {degree}')
-    plt.plot(x_range, y2, color='green', label=f'Wielomian stopnia {degree}')
-    plt.title(f'{column}')
-    plt.legend()
-    plt.show()
-    '''
     return model, coefficients, intercept
 
 
@@ -105,23 +92,6 @@ def calculate_quantiles(df, column, X_feature_name, quantiles, model):
 
     return quantiles_array, indices_array
 
-    '''
-    degree = 3
-    ransac_model = model.named_steps['ransacregressor']
-    coefficients = ransac_model.estimator_.coef_
-    intercept = ransac_model.estimator_.intercept_
-    x_range = np.linspace(5, 85, 1000).reshape(-1, 1)  # Przykładowe punkty do przewidywania
-    #y2 = x_range**3 *coefficients[3]+ x_range**2 * coefficients[2] + x_range * coefficients[1] + intercept
-    y_ransac = model.predict(x_range)
-    # Rysowanie wyników
-    plt.scatter(X, y, color='blue', label='Dane')
-    #plt.plot(x_range, y_ransac, color='red', label=f'Wielomian stopnia {degree}')
-    plt.scatter(new_x, new_y, color='red', label=f'po odjęciu wielomianu stopnia {degree}')
-    #plt.plot(x_range, y2, color='green', label=f'Wielomian stopnia {degree}')
-    plt.title(f'{column}')
-    plt.legend()
-    plt.show()
-    '''
         
 def calculate_normality(df, column, X_feature_name, df_scores):
 

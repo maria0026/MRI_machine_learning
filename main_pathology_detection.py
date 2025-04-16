@@ -58,7 +58,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("parser for age preidction")
+    parser = argparse.ArgumentParser("Parser for pathology detection")
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--test_one", nargs="?", default=0, help="Test one case", type=bool)

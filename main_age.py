@@ -114,11 +114,7 @@ def main(args):
             best_rf = rf.best_estimator_
             feature_importances = pd.Series(best_rf.feature_importances_, index=X_train.columns).sort_values(ascending=False)
             feature_importances.index = feature_importances.index.astype(int)
-            print(feature_importances)
-            #sort ascending by indexes
             feature_importances=feature_importances.sort_index()
-            print(feature_importances.index)
-            print("importances", feature_importances.values)
             importance_df['comp_imp'] = feature_importances.values
             mse, rmse, mae, results_df = tester.random_forest_regression_model(X_test, y_test, feature, rf)
             joblib.dump(rf, f'{model_path}/model_train_nr_{i}.pkl')
@@ -192,10 +188,11 @@ def main(args):
         rmses.append(rmse)
         maes.append(mae)
 
-
+    mae_mean = round(np.mean(maes), 2)
+    mae_std = round(np.std(maes), 2)
     print("Mean squared error", np.mean(mses), np.std(mses))
     print("Root mean squared error", np.mean(rmses), np.std(rmses))
-    print("Mean absolute error holdout", round(np.mean(maes), 2), "± ", round(np.std(maes),2))
+    print("Mean absolute error train", mae_mean, "± ", mae_std)
 
     count_outliers_lower = np.array([x if x is not None else np.nan for x in count_outliers_lower])
     count_outliers_upper = np.array([x if x is not None else np.nan for x in count_outliers_upper])
@@ -204,7 +201,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("parser for age preidction")
+    parser = argparse.ArgumentParser("Parser for age preidction - testing on test set with PCA")
     parser.add_argument("--model_name", nargs="?", default="forest", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
