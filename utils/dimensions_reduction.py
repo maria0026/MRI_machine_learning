@@ -5,8 +5,13 @@ import matplotlib.pyplot as plt
 import numpy as np 
 from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
 from scipy.spatial.distance import squareform
-import seaborn as sns
-from sklearn.manifold import TSNE
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score
+from collections import Counter
+from itertools import combinations
+from tqdm import tqdm
+
 
 class DimensionsReductor:
 
@@ -151,11 +156,52 @@ class DimensionsReductor:
         return correlations, selected_features
     
 
-    def stochastic_neighbor_embedding(self, X_train, X_test, components_nr):
-        tsne = TSNE(n_components=2, random_state=42)
-        train_tsne = tsne.fit_transform(X_train)
-        #test_tsne=tsne.transform(X_test)
-        test_tsne=X_test
-        tsne.kl_divergence_
+    def hierarchical_feature_selection(self, X, y, trainer, tester, model, svm_param_dist, test_feature,
+                                    n_groups=10, top_fraction=0.5, final_n_features=10,
+                                    max_subset_size=3, random_state=42):
+        
+        rng = np.random.default_rng(random_state)
+        feature_names = list(X.columns)
+        current_features = feature_names.copy()
 
-        return tsne, train_tsne, test_tsne
+        while len(current_features) > final_n_features:
+            rng.shuffle(current_features)
+            grouped_features = np.array_split(current_features, n_groups)
+            all_top_features = []
+
+            for group in tqdm(grouped_features, desc="Processing groups"):
+                feature_dict={}
+                group = list(group)
+                X_group = X[group]
+
+                # Train/test split for internal evaluation
+                X_train, X_val, y_train, y_val = train_test_split(X_group, y, test_size=0.2, random_state=random_state)
+
+                # Przejdź przez wszystkie kombinacje cech w grupie
+                all_combos = []
+                for r in range(1, min(max_subset_size + 1, len(group) + 1)):
+                    all_combos.extend(list(combinations(group, r)))
+
+                    for combo in tqdm(all_combos, desc=f"Group with {len(group)} features", leave=False):
+                        X_sub = X_train[list(combo)]
+
+                        if model == "svm":
+                            clf = trainer.svm_regression_model(X_sub, y_train, svm_param_dist, test_feature)
+                            mse, rmse, mae, results_df, _ = tester.svm_regression_model(
+                                X_val[list(combo)], y_val, clf, z=None, feature=test_feature, comp=False, importance=False
+                            )
+                            feature_dict[tuple(combo)]=mae
+                    
+
+                sorted_dict = sorted(feature_dict.items(), key=lambda x: x[1], reverse=True)
+                n_combinations = int(len(sorted_dict) * top_fraction)
+                
+                top_features = sorted_dict[:n_combinations]
+                all_top_features.extend([feature for combo, _ in top_features for feature in combo])
+
+            n_features = int(len(current_features) * top_fraction)
+            feature_counts = Counter(all_top_features)
+            most_common_features = feature_counts.most_common(n_features)
+            current_features = [feature for feature, count in most_common_features]
+
+        return current_features
