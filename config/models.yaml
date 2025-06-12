@@ -1,0 +1,47 @@
+test_size: 0.2
+forest:
+  param_dist:
+    n_estimators:
+      type: randint
+      low: 50
+      high: 500
+    max_depth:
+      type: randint
+      low: 1
+      high: 30
+    min_samples_leaf:
+      type: randint
+      low: 5
+      high: 10
+    min_samples_split:
+      type: randint
+      low: 10
+      high: 80
+svm:
+  param_dist:
+    C:
+      type: uniform
+      low: 25
+      high: 40
+    gamma:
+      type: uniform
+      low: 0.00001
+      high: 0.00007
+    kernel: ['rbf']
+fnn:
+  num_epochs: 100
+  output_dim: 1
+  hidden_dim: 20
+  learning_rate: 0.075
+  momentum: 0.7
+  weight_decay: 0.01
+  batch_size: 64
+rnn:
+  num_epochs: 100
+  output_dim: 1
+  hidden_dim: 10
+  learning_rate: 0.001
+  weight_decay: 0.008
+  layer_dim: 1
+  seq_dim: 1
+  batch_size: 64
