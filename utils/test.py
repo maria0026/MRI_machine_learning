@@ -76,8 +76,8 @@ class ModelTester:
         return accuracy, precision, recall, cm, fpr, tpr
 
 
-    def svm_regression_model(self, X_test, y_test, clf, z=None, feature=None, comp=True):
-        print('Best hyperparameters:',  clf.best_params_)
+    def svm_regression_model(self, X_test, y_test, clf, z=None, feature=None, comp=True, importance=True):
+        #print('Best hyperparameters:',  clf.best_params_)
 
         y_pred = clf.predict(X_test)
         #detrend the results
@@ -96,18 +96,20 @@ class ModelTester:
         })
 
         # Feature Importance with eli5
-        
-        perm = PermutationImportance(clf.best_estimator_, scoring='neg_mean_absolute_error', n_iter=5).fit(X_test, y_test_flat)
-        if comp:
-            df_fi = pd.DataFrame(dict(component_names=X_test.columns.tolist(),
-                                comp_imp=perm.feature_importances_, 
-                                std=perm.feature_importances_std_,
+        if importance:
+            perm = PermutationImportance(clf.best_estimator_, scoring='neg_mean_absolute_error', n_iter=5).fit(X_test, y_test_flat)
+            if comp:
+                df_fi = pd.DataFrame(dict(component_names=X_test.columns.tolist(),
+                                    comp_imp=perm.feature_importances_, 
+                                    std=perm.feature_importances_std_,
+                                        ))
+            else:
+                df_fi = pd.DataFrame(dict(feature_name=X_test.columns.tolist(),
+                                    feature_importance=perm.feature_importances_, 
                                     ))
+            df_fi = df_fi.round(4)
         else:
-            df_fi = pd.DataFrame(dict(feature_name=X_test.columns.tolist(),
-                                feature_importance=perm.feature_importances_, 
-                                ))
-        df_fi = df_fi.round(4)
+            df_fi=[]
 
         return mse, rmse, mae, results_df, df_fi
 
