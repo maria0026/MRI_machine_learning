@@ -46,7 +46,7 @@ def main(args):
     input_dim = df.shape[1]-1
 
 
-    for i in range(args.n_crosval):
+    for i in range(global_config['n_crosval']):
 
         #splitting and standardizing
         feature=args.label_names
@@ -155,13 +155,10 @@ if __name__ == "__main__":
     parser.add_argument("--valid", nargs="?", default=1, help="create valid set: 0/1", type=bool)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--sex_subset", nargs="?", default="all", help="Choose the sex subset: all/female/male", type=str)
-    parser.add_argument("--n_most_important_features", nargs="?", default=20, help="Choose the number of extracting features that load into components")
-    parser.add_argument("--n_crosval", nargs="?", default=5, help="Number of crossvalidation", type=int)
-    parser.add_argument("--batch_size", nargs="?", default=64, help="Batch size", type=int)
     parser.add_argument("--results_directory", nargs="?", default="results", help="Directory for results", type=str)
     parser.add_argument("--label_names", nargs="+", default=["age"], help="Predicted parameters")
     parser.add_argument("--column_to_copy", nargs="+", default=['male'], help="Columns to copy")
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)
-    parser.add_argument("--plot", nargs="?", default=0, help="Plot results", type=bool)
+    parser.add_argument("--plot", nargs="?", default=0, help="Plot results folder name", type=bool)
     args = parser.parse_args()
     main(args)
