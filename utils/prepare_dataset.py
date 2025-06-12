@@ -1,7 +1,9 @@
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import os
+from scipy.stats import randint, uniform
 import pandas as pd
+import yaml
 
 class DatasetPreprocessor:
     def __init__(self):
@@ -91,28 +93,26 @@ class DatasetPreprocessor:
 
         return principal_df
     
-    #nieuzywane
-    def transform_correlations_total_volume(self, correlations):
-
-        # Inicjalizacja słownika dla przekształconych danych
-        data = {'Metric': [], 'Male': [], 'Female': []}
-
-        # Iteracja po wierszach danych
-        for metric in correlations.index:
-            if 'female' in metric:
-                # Usunięcie '_female' z nazwy metryki
-                base_metric = metric.replace('_female', '')
-                
-                # Sprawdzenie czy istnieje odpowiadająca metryka dla mężczyzn
-                male_metric = correlations.index[correlations.index.str.contains(base_metric) & ~correlations.index.str.contains('female')]
-                if len(male_metric) > 0:
-                    male_value = correlations.loc[male_metric[0]].values[0]
-                    female_value = correlations.loc[metric].values[0]
-                    
-                    # Dodanie wartości do słownika
-                    data['Metric'].append(base_metric)
-                    data['Male'].append(male_value)
-                    data['Female'].append(female_value)
-
-        df = pd.DataFrame(data)
-        return df
+    def load_model_config(self, model_name: str, config_file: str) -> tuple[dict, dict]:
+        with open(config_file, "r") as f:
+            full_config = yaml.safe_load(f)
+        model_config = full_config.get(model_name, {})
+        global_config = {k: v for k, v in full_config.items() if k != model_name}
+        return global_config, model_config
+    
+    def convert_dist_params(self, param_dist):
+        """Konwertuje wartości z YAML-a na obiekty scipy.stats, jeśli to konieczne"""
+        dist = {}
+        for key, val in param_dist.items():
+            if isinstance(val, dict):
+                if val.get("type") == "uniform":
+                    low = val["low"]
+                    high = val["high"]
+                    dist[key] = uniform(loc=low, scale=high - low)
+                elif val.get("type") == "randint":
+                    low = val["low"]
+                    high = val["high"]
+                    dist[key] = randint(low, high)
+            else:
+                dist[key] = val
+        return dist
