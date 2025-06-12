@@ -8,8 +8,7 @@ import joblib
 import os
 import torch
 from sklearn.model_selection import train_test_split
-from utils import prepare_dataset, train, valid, test, nn_data, dimensions_reduction
-
+from utils import prepare_dataset, train, valid, test, nn_data, save_results
 
 
 def main(args):
@@ -17,18 +16,19 @@ def main(args):
     preprocessor = prepare_dataset.DatasetPreprocessor()
     trainer = train.ModelTrainer()
     tester = test.ModelTester()
-    reductor = dimensions_reduction.DimensionsReductor()
 
-    mses, rmses, maes = [], [], []
+    mses, rmses, maes, count_outliers_lower, count_outliers_upper = [], [], [], [], []
+    
     loss_fn = nn.MSELoss()
 
-    #path for saving model parameters
+
     model_path=f'models/{args.atlas}/{args.model_name}_{args.data_type}_valid_{args.valid}'
     if not os.path.exists(model_path):
         os.makedirs(model_path)
 
     df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/all_concatenated.csv', sep='\t')
-    #create leave out dataset
+    
+
     if os.path.exists("data/leave_out_identifiers.csv"):
         leave_ids = pd.read_csv("data/leave_out_identifiers.csv")['identifier']
         df_leave = df[df['identifier'].isin(leave_ids)]
@@ -42,7 +42,6 @@ def main(args):
     df = df.drop(columns=args.columns_to_drop)
     input_dim = df.shape[1]-1
 
-    #different dataset for testing
     if args.test_data_type!="None":
         df_test = pd.read_csv(f'data/{args.test_data_type}_norm_confirmed/all_concatenated.csv', sep='\t')
         identifier=df_test['identifier']
@@ -56,10 +55,8 @@ def main(args):
             if args.test_data_type!="None":
                 df_test = preprocessor.divide_by_total_volume(df_test)
         '''
-        feature=args.label_names
         X_train, X_val, X_test, y_train, y_val, y_test = preprocessor.split_dataset(df, args.label_names, test_size=args.test_size, valid=args.valid)
-
-
+        
         if args.test_data_type!="None":
             X_test = df_test.drop(columns=args.label_names)
             y_test = df_test[args.label_names]
@@ -68,6 +65,7 @@ def main(args):
         joblib.dump(scaler, f'{model_path}/scaler_train_nr_{i}.pkl')
         y_test['identifier'] = identifier
         y_test['male']=X_test['male']
+        feature=args.label_names
         print("Odchylenie",np.std(y_train[feature[0]]))
         print("Srednia", np.mean(y_train[feature[0]]))
         print("X_train", X_train.shape)
@@ -87,36 +85,30 @@ def main(args):
             svm_param_dist = json.loads(args.svm_param_dist)
             svm_param_dist['C'] = randint(*svm_param_dist['C'])  
             svm_param_dist['gamma'] = uniform(*svm_param_dist['gamma']) 
-            
-
-            y_train_h=y_train.copy()
-            y_train_h['identifier'] = identifier
-            y_train_h['male']=X_train['male']
-            rng = np.random.default_rng(42)  # for reproducibility
-            #selected_columns = rng.choice(X_train.columns, size=150, replace=False)
-
-            # Reduce X_train to n features
-            #X_train_h = X_train[selected_columns]
-            X_train_h = X_train
-        
-            features=reductor.hierarchical_feature_selection(X_train_h, y_train_h, trainer, tester, args.model_name, svm_param_dist, feature)
+            features=['APARC-ctx-rh-transversetemporal_ThickStd', 'APARC-ctx-lh-superiorparietal_ThickStd', 'APARC-ctx-lh-caudalanteriorcingulate_ThickStd', 'APARC-ctx-rh-entorhinal_ThickStd', 'APARC-ctx-rh-inferiorparietal_ThickStd', 'APARC-ctx-lh-temporalpole_ThickStd', 'APARC-ctx-rh-pericalcarine_GrayVol', 'APARC-ctx-rh-caudalanteriorcingulate_ThickStd']
             print("Selected features", features)
-            X_train_selected = X_train[features]
-            X_val_selected = X_val[features]
-            X_test_selected = X_test[features]
-
-            clf = trainer.svm_regression_model(X_train_selected, y_train, svm_param_dist, feature)
-
+            X_train = X_train[features]
+            X_val = X_val[features]
+            X_test = X_test[features]
+            clf = trainer.svm_regression_model(X_train, y_train, svm_param_dist, feature)
             if args.valid:
-                z, z_quantiles= valid.svm_regression_model(X_val_selected, y_val, clf, feature, plot=args.plot)
+                z, z_quantiles= valid.svm_regression_model(X_val, y_val, clf, feature, plot=args.plot)
             else:
                 z=None
                 z_quantiles=None
     
-            mse, rmse, mae, results_df, feature_importance = tester.svm_regression_model(X_test_selected, y_test, clf, z=z, feature=feature)
-            joblib.dump(clf, f'{model_path}/hierachical_model_train_nr_{i}.pkl')
-            joblib.dump(z, f'{model_path}/hierachical_z_train_nr_{i}.pkl')
-            joblib.dump(z_quantiles, f'{model_path}/hierachical_z_quantiles_train_nr_{i}.pkl')
+            mse, rmse, mae, results_df, feature_importance = tester.svm_regression_model(X_test, y_test, clf, z=z, feature=feature)
+            identifiers_lower, identifiers_upper, sex_lower, sex_upper = tester.svm_regression_model_quantiles(results_df, y_test, z_quantiles=z_quantiles, feature=feature, plot=args.plot, first_quantile=args.first_quantile, last_quantile=args.last_quantile)
+            joblib.dump(clf, f'{model_path}/model_train_nr_{i}.pkl')
+            joblib.dump(z, f'{model_path}/z_train_nr_{i}.pkl')
+            joblib.dump(z_quantiles, f'{model_path}/z_quantiles_train_nr_{i}.pkl')
+            identifiers_lower = pd.Series(identifiers_lower, name=f'identifier_lower_{i}')
+            sex_lower = pd.Series(sex_lower, name=f'male_lower_{i}')
+            identifiers_upper = pd.Series(identifiers_upper, name=f'identifier_upper_{i}')
+            sex_upper = pd.Series(sex_upper, name=f'male_upper_{i}')
+            identifiers = pd.concat([identifiers_lower, sex_lower, identifiers_upper, sex_upper], axis=1)
+            count_outliers_lower.append(len(identifiers_lower))
+            count_outliers_upper.append(len(identifiers_upper))
 
 
         elif args.model_name=='fnn':
@@ -142,6 +134,9 @@ def main(args):
 
         if i==0:
             results_df.to_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
+            
+            if args.model_name=='svm':
+                identifiers.to_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_identifiers_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
         else:
             results_df_old = pd.read_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t')
             results_df = pd.concat([results_df_old.reset_index(drop = True), results_df.reset_index(drop = True)], axis = 1)
@@ -153,17 +148,33 @@ def main(args):
         maes.append(mae)
         print("MAE:", mae)
 
+
+    '''
+    save_results.write_result_to_csv(
+    atlas=args.atlas,
+    model_name=args.model_name,
+    data_type=args.data_type,
+    mae_mean=mae_mean,
+    mae_std=mae_std,
+    csv_path=f'{args.results_directory}/model_results.csv',
+    column_indices=(2, 4)
+)
+'''
     mae_mean = round(np.mean(maes), 2)
     mae_std = round(np.std(maes), 2)
     print("Mean squared error", np.mean(mses), np.std(mses))
     print("Root mean squared error", np.mean(rmses), np.std(rmses))
     print("Mean absolute error train", mae_mean, "± ", mae_std)
 
+    count_outliers_lower = np.array([x if x is not None else np.nan for x in count_outliers_lower])
+    count_outliers_upper = np.array([x if x is not None else np.nan for x in count_outliers_upper])
+    print("Outliers lower", np.nanmean(count_outliers_lower)/y_test.shape[0], np.nanstd(count_outliers_lower)/y_test.shape[0])
+    print("Outliers upper", np.nanmean(count_outliers_upper)/y_test.shape[0], np.nanstd(count_outliers_upper)/y_test.shape[0])
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age preidction - testing on test set without dimensionality reduction")
-    parser.add_argument("--atlas", nargs="?", default="ASEG", help="atlas", type=str)
+    parser.add_argument("--atlas", nargs="?", default="APARC", help="atlas", type=str)
     parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--valid", nargs="?", default=1, help="create valid set: 0/1", type=bool)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
@@ -197,8 +208,8 @@ if __name__ == "__main__":
     parser.add_argument("--rnn_seq_dim", nargs="?", default=1, help="Sequence dimension for recurrent neural network", type=int)
     parser.add_argument("--output_dim", nargs="?", default=1, help="Output dimension for neural network", type=int)
     parser.add_argument("--results_directory", nargs="?", default="results", help="Directory for results", type=str)
-    parser.add_argument("--label_names", nargs="+", default=["age"], help="Predicted parameters, list")
-    parser.add_argument("--column_to_copy", nargs="+", default=['male'], help="Columns to copy")
+    parser.add_argument("--label_names", nargs="?", default=["age"], help="Predicted parameters, list", type=list)
+    parser.add_argument("--column_to_copy", nargs="?", default=['male'], help="Columns to copy", type=list)
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)
     parser.add_argument("--first_quantile", nargs="?", default=0.01, help="First quantile for svm regression", type=float)
     parser.add_argument("--last_quantile", nargs="?", default=0.99, help="Last quantile for svm regression", type=float)
