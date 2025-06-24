@@ -182,15 +182,15 @@ class DimensionsReductor:
                 for r in range(1, min(max_subset_size + 1, len(group) + 1)):
                     all_combos.extend(list(combinations(group, r)))
 
-                    for combo in tqdm(all_combos, desc=f"Group with {len(group)} features", leave=False):
-                        X_sub = X_train[list(combo)]
+                for combo in tqdm(all_combos, desc=f"Group with {len(group)} features", leave=False):
+                    X_sub = X_train[list(combo)]
 
-                        if model == "svm":
-                            clf = trainer.svm_regression_model(X_sub, y_train, svm_param_dist, test_feature)
-                            mse, rmse, mae, results_df, _ = tester.svm_regression_model(
-                                X_val[list(combo)], y_val, clf, z=None, feature=test_feature, comp=False, importance=False
-                            )
-                            feature_dict[tuple(combo)]=mae
+                    if model == "svm":
+                        clf = trainer.svm_regression_model(X_sub, y_train, svm_param_dist, test_feature)
+                        mse, rmse, mae, results_df, _ = tester.svm_regression_model(
+                            X_val[list(combo)], y_val, clf, z=None, feature=test_feature, comp=False, importance=False
+                        )
+                        feature_dict[tuple(combo)]=mae
                     
 
                 sorted_dict = sorted(feature_dict.items(), key=lambda x: x[1], reverse=True)
