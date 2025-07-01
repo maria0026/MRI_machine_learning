@@ -9,6 +9,7 @@ class AnomaliesDetector:
     def test_normality(self, filename, columns_to_drop):
         df=pd.read_csv(filename, sep='\t')
         df=df.drop(columns=columns_to_drop)
+        df = df.fillna(0)
 
         #df for outliers marking
         df_outliers=pd.DataFrame(columns=df.columns, index=df.index)
