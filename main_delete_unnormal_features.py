@@ -1,5 +1,5 @@
-import pandas as pd
 import argparse
+import os
 from utils import anomalies_detection, prepare_dataset
 
 
@@ -12,6 +12,8 @@ def main(args):
 
     #searching for unnormal columns
     df_normality_scores, df_outliers = anomalies_detector.test_normality(filename, args.columns_to_drop)
+    if not os.path.exists(args.results_directory):
+        os.makedirs(args.results_directory)
     df_normality_scores.to_csv(f'{args.results_directory}/{args.data_type}_outliers_values.csv', sep='\t', index=True)
     df_outliers.to_csv(f'{args.results_directory}/{args.data_type}_outliers.csv', sep='\t', index=True)
     #print(df_normality_scores)
@@ -31,7 +33,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for deleting unnormal features")
-    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--data_type", nargs="?", default="all", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all/None, choose None if you don't want to test on the different dataset", type=str)
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier', 'norm_confirmed', 'sex', 'male', 'female', 'age','Estimated_Total_Intracranial_Volume'], help="Columns to drop", type=list)
     parser.add_argument("--results_directory", nargs="?", default="results", help="Directory for results", type=str)

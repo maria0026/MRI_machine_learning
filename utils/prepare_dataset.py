@@ -14,6 +14,7 @@ class DatasetPreprocessor:
         for file in files:
             columns_to_drop=[]
             path=os.path.join(folder, file)
+            print(path)
             df=pd.read_csv(path, sep='\t')
 
             for column in df.columns:

@@ -202,8 +202,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age preidction - testing on test set with PCA")
-    parser.add_argument("--model_name", nargs="?", default="forest", help="Model name: forest/svm/fnn/rnn", type=str)
-    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--data_type", nargs="?", default="all", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
