@@ -8,8 +8,9 @@
 *.venv
 *.cfg
 results.ipynb
+Zone.Identifier
 *.png
-*.txt
+data
 *.tex
 *.pkl
 brain_ml

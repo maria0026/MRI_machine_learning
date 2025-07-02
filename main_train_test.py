@@ -24,10 +24,14 @@ def main(args):
         os.makedirs(model_path)
     
     df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
-
-    leave_ids = pd.read_csv("data/leave_out_identifiers.csv")['identifier']
-    df_leave = df[df['identifier'].isin(leave_ids)]
-    df = df[~df['identifier'].isin(leave_ids)]
+    #create leave out dataset
+    if os.path.exists("data/leave_out_identifiers.csv"):
+        leave_ids = pd.read_csv("data/leave_out_identifiers.csv")['identifier']
+        df_leave = df[df['identifier'].isin(leave_ids)]
+        df = df[~df['identifier'].isin(leave_ids)]
+    else:
+        df, df_leave = train_test_split(df, test_size=0.15, random_state=42)
+        df_leave['identifier'].to_csv("data/leave_out_identifiers.csv", index=False)
 
     df_leave.to_csv(f'data/{args.data_type}_norm_confirmed_normal/leave_out.csv', sep='\t', index=False)
     identifier=df['identifier']
@@ -50,6 +54,11 @@ def main(args):
         if args.test_data_type!="None":
             X_test = df_test.drop(columns=args.label_names)
             y_test = df_test[args.label_names]
+
+        X_train = X_train.fillna(0)
+        X_test = X_test.fillna(0)
+        if X_val is not None:
+            X_val = X_val.fillna(0)    
 
         X_train, X_val, X_test, scaler = preprocessor.standardize_data(X_train, X_val, X_test, column_to_copy=args.column_to_copy)
         joblib.dump(scaler, f'{model_path}/scaler_train_nr_{i}.pkl')
@@ -202,8 +211,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age preidction - testing on test set with PCA")
-    parser.add_argument("--model_name", nargs="?", default="forest", help="Model name: forest/svm/fnn/rnn", type=str)
-    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--data_type", nargs="?", default="all", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
