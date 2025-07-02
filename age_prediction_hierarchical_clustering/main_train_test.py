@@ -2,16 +2,11 @@ import pandas as pd
 import numpy as np
 from torch import nn
 import argparse
-from scipy.stats import randint, uniform
-import json
 import joblib
 import os
 import torch
-import yaml
 from sklearn.model_selection import train_test_split
 from utils import prepare_dataset, train, valid, test, nn_data, dimensions_reduction
-
-
 
 def main(args):
 
@@ -25,10 +20,12 @@ def main(args):
 
     global_config, model_config = preprocessor.load_model_config(args.model_name, args.config_file)
 
+
     #path for saving model parameters
     model_path=f'models/{args.atlas}/{args.model_name}_{args.data_type}_valid_{args.valid}'
     if not os.path.exists(model_path):
         os.makedirs(model_path)
+
 
     df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/all_concatenated.csv', sep='\t')
     #create leave out dataset
@@ -47,6 +44,7 @@ def main(args):
 
 
     for i in range(global_config['n_crosval']):
+        features_path = f'{model_path}/selected_features_train_nr_{i}.pkl'
 
         #splitting and standardizing
         feature=args.label_names
@@ -77,22 +75,25 @@ def main(args):
             y_train_h['male']=X_train['male']
             rng = np.random.default_rng(42)  # for reproducibility
             #selected_columns = rng.choice(X_train.columns, size=150, replace=False)
-
             # Reduce X_train to n features
             #X_train_h = X_train[selected_columns]
             X_train_h = X_train
-        
-            '''
+
             features=reductor.hierarchical_feature_selection(X_train_h, y_train_h, trainer, tester, args.model_name, svm_param_dist, feature)
+            
             print("Selected features", features)
-            X_train_selected = X_train[features]
+            joblib.dump(features, features_path)
+            print(f"Saved selected features from iteration {i}")
+
+            X_train_selected = X_train[features]    
             X_val_selected = X_val[features]
             X_test_selected = X_test[features]
+
             '''
             X_train_selected = X_train
             X_val_selected = X_val
             X_test_selected = X_test
-
+            '''
             clf = trainer.svm_regression_model(X_train_selected, y_train, svm_param_dist, feature)
 
             if args.valid:
@@ -151,7 +152,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age prediction - testing on test set with hierachical clustering feature selection")
     parser.add_argument("--config_file", nargs="?", default="config/models.yaml", help="Configuration file", type=str)
     parser.add_argument("--atlas", nargs="?", default="ASEG", help="atlas", type=str)
-    parser.add_argument("--model_name", nargs="?", default="forest", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--valid", nargs="?", default=1, help="create valid set: 0/1", type=bool)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--sex_subset", nargs="?", default="all", help="Choose the sex subset: all/female/male", type=str)
@@ -159,6 +160,6 @@ if __name__ == "__main__":
     parser.add_argument("--label_names", nargs="+", default=["age"], help="Predicted parameters")
     parser.add_argument("--column_to_copy", nargs="+", default=['male'], help="Columns to copy")
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)
-    parser.add_argument("--plot", nargs="?", default=0, help="Plot results folder name", type=bool)
+    parser.add_argument("--plot", nargs="?", default=1, help="Plot results folder name", type=bool)
     args = parser.parse_args()
     main(args)
