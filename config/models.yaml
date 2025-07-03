@@ -17,7 +17,7 @@ forest:
     min_samples_split:
       type: randint
       low: 10
-      high: 80
+      high: 50
 svm:
   param_dist:
     C:
@@ -46,3 +46,30 @@ rnn:
   layer_dim: 1
   seq_dim: 1
   batch_size: 64
+
+cat:
+  param_dist:
+    depth:
+      type: randint
+      low: 4
+      high: 10
+    learning_rate:
+      type: uniform
+      low: 0.01
+      high: 0.3
+    iterations:
+      type: randint
+      low: 100
+      high: 1000
+    l2_leaf_reg:
+      type: uniform
+      low: 1.0
+      high: 10.0
+    random_strength:
+      type: uniform
+      low: 0.0
+      high: 1.0
+    bagging_temperature:
+      type: uniform
+      low: 0.0
+      high: 1.0
