@@ -18,3 +18,4 @@ brain_ml
 plots/age_distribution_by_sex.jpg
 *.tiff
 *.fish
+/catboost_info
