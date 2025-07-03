@@ -1,14 +1,11 @@
 from scipy.stats import randint, uniform
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, ConfusionMatrixDisplay
-from sklearn.model_selection import RandomizedSearchCV, train_test_split
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn import svm
 import torch
-import matplotlib.pyplot as plt
-from torch.utils.data import Dataset, DataLoader
 from torch.autograd import Variable
-
+from catboost import CatBoostRegressor
 from utils import nn_data, nn_model
 
 class ModelTrainer:
@@ -124,3 +121,14 @@ class ModelTrainer:
                         print('Iteration: {}  Loss: {} '.format(count, loss.item()))
 
         return model
+    
+    def catboost_regression_model(self, X_train, y_train, param_grid, feature):
+        model = CatBoostRegressor(silent=True)
+        rand_search = RandomizedSearchCV(model, 
+                                    param_distributions=param_grid, 
+                                    n_iter=10, 
+                                    cv=5,
+                                    scoring='neg_mean_squared_error',
+                                    verbose=0)   
+        rand_search.fit(X_train, y_train[feature])
+        return rand_search

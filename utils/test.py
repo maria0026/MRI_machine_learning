@@ -338,3 +338,22 @@ class ModelTester:
 
 
         return mse, rmse, mae, y_pred_df
+    
+    def catboost_regression_model(self, X_test, y_test, feature, catboost_model):
+        print('Best hyperparameters:', catboost_model.best_params_)
+
+        y_pred = catboost_model.predict(X_test)
+        
+        mse = mean_squared_error(y_test[feature], y_pred)
+        rmse = float(format(np.sqrt(mse), '.3f'))
+        mae = mean_absolute_error(y_test[feature], y_pred)
+
+        print(y_test.shape, y_pred.shape)
+
+        results_df = pd.DataFrame({
+            'Actual': y_test[feature].values.flatten(),
+            'Predicted': y_pred.flatten(),
+            'identifier': y_test['identifier'].values
+        })
+
+        return mse, rmse, mae, results_df
