@@ -73,6 +73,10 @@ def main(args):
             mse, rmse, mae, results_df = tester.recurrent_neural_network_regression(X_test, y_test, args.batch_size, args.rnn_seq_dim, input_dim, model, feature)
 
 
+        elif args.model_name=='cat':
+            model = joblib.load( f'{model_path}/model_train_nr_{i}.pkl')
+            mse, rmse, mae, results_df = tester.catboost_regression_model(X_test, y_test, feature, model)
+
         if i==0:
             results_df.to_csv(f'{results_directory}/test_{args.data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
             if args.model_name=='svm':
