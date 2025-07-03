@@ -40,8 +40,8 @@ def main(args):
     else:
         df, df_leave = train_test_split(df, test_size=0.15, random_state=42)
         df_leave['identifier'].to_csv("data/leave_out_identifiers.csv", index=False)
-
     df_leave.to_csv(f'data/{args.data_type}_norm_confirmed_normal/leave_out.csv', sep='\t', index=False)
+    
     identifier=df['identifier']
     print(df['identifier'])
     print(df.shape)
