@@ -8,6 +8,8 @@ class AnomaliesDetector:
         
     def test_normality(self, filename, columns_to_drop):
         df=pd.read_csv(filename, sep='\t')
+        df = df[(df['age'] <= 100) & (df['age'] >= 0.5)]
+        df = df[~((df['age'] < 1) & (df['hight'] > 100))]
         df=df.drop(columns=columns_to_drop)
         df = df.fillna(0)
 
@@ -18,7 +20,18 @@ class AnomaliesDetector:
         for column in df.columns:
             data=df[column]
             #norality test before outlier detection
-            _, p= stats.kstest(data, 'norm', args=(np.mean(data), np.std(data)))
+            std_all = np.std(data)
+
+            # Test normalności przed usunięciem outlierów
+            if std_all == 0 or np.isnan(std_all):
+                p = np.nan
+            else:
+                try:
+                    #_, p = stats.kstest(data, 'norm', args=(np.mean(data), std_all))
+                    _, p = stats.normaltest(data)
+                except Exception:
+                    p = np.nan
+
 
             #outliers detection
             mad=stats.median_abs_deviation(data)
@@ -33,16 +46,22 @@ class AnomaliesDetector:
                                 (data < lower_bound)).astype(int)
             
             #choose only data without outliers
-            data=data[df_outliers[column]==0]
-            
-            _, p_after= stats.kstest(data, 'norm', args=(np.mean(data), np.std(data)))
+            data_no_outliers=data[df_outliers[column]==0]
+            std_clean = np.std(data_no_outliers)
 
-            test_result=0
-            if p_after < 0.05:
-                test_result=1
+            if len(data_no_outliers) < 5 or std_clean == 0 or np.isnan(std_clean):
+                p_after = np.nan
+                test_result = np.nan
             else:
-                test_result=0
-            
+                try:
+                    #_, p_after = stats.kstest(data_no_outliers, 'norm',
+                                            #args=(np.mean(data_no_outliers), np.std(data_no_outliers)))
+                    _, p_after = stats.normaltest(data_no_outliers)
+                    test_result = int(p_after < 0.05)
+                except Exception:
+                    p_after = np.nan
+                    test_result = np.nan
+    
             #sum number of outliers in column
             outliers_number=df_outliers[column].sum()
             normality_scores[column]=[median, mad, outliers_number, p, p_after, test_result]

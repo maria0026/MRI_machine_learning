@@ -24,6 +24,11 @@ def main(args):
         os.makedirs(model_path)
     
     df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/all_concatenated.csv', sep='\t')
+    df = df[(df['age'] <= 100) & (df['age'] >= 0.5)]
+
+    print("Max age:", df['age'].max())
+    print("Min age:", df['age'].min())
+
     #create leave out dataset
     if os.path.exists("data/leave_out_identifiers.csv"):
         leave_ids = pd.read_csv("data/leave_out_identifiers.csv")['identifier']
@@ -36,6 +41,7 @@ def main(args):
     df_leave.to_csv(f'data/{args.data_type}_norm_confirmed_normal/leave_out.csv', sep='\t', index=False)
     identifier=df['identifier']
     print(df['identifier'])
+    print(df.shape)
     df = df.drop(columns=args.columns_to_drop)
 
     if args.test_data_type!="None":
@@ -212,7 +218,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age preidction - testing on test set with PCA")
     parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
-    parser.add_argument("--data_type", nargs="?", default="all", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--data_type", nargs="?", default="all_big", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
