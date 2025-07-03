@@ -112,8 +112,8 @@ def main(args):
             y_train[feature] = y_train[feature]/100
             y_test[feature] = y_test[feature]/100
             train_dataloader = nn_data.load_fnn_data(X_train, y_train,  model_config['batch_size'], feature)
-            model = trainer.feed_forward_neural_network(train_dataloader, input_dim, model_config['hidden_dim'], model_config['output_dim'], model_config['learning_rate'], loss_fn, model_config['num_epochs'],  model_config['momentum'],  model_config['weight_decay'])
-            mse, rmse, mae, results_df, feature_importance = tester.neural_network_regression(X_test, y_test,  model_config['batch_size'], model,feature)
+            model = trainer.feed_forward_neural_network(train_dataloader, input_dim, model_config['hidden_dim'], model_config['output_dim'], model_config['learning_rate'], loss_fn, model_config['num_epochs'], model_config['momentum'], model_config['weight_decay'])
+            mse, rmse, mae, results_df, feature_importance = tester.neural_network_regression(X_test, y_test,  model_config['batch_size'], model, feature)
             torch.save(model.state_dict(), f'{model_path}/hierarchical_model_train_nr_{i}.pth')
             
 
@@ -121,8 +121,8 @@ def main(args):
             y_train[feature] = y_train[feature]/100
             y_test[feature] = y_test[feature]/100
             train_dataloader = nn_data.load_rnn_data(X_train, y_train, model_config['batch_size'], feature)
-            model = trainer.recurrent_neural_network(train_dataloader,  model_config['seq_dim'], input_dim,  model_config['hidden_dim'],  model_config['layer_dim'],  model_config['output_dim'], model_config['learning_rate'], loss_fn,  model_config['num_epochs'],  model_config['weight_decay'])
-            mse, rmse, mae, results_df = tester.recurrent_neural_network_regression(X_test, y_test, model_config['batch_size'],  model_config['seq_dim'], input_dim, model, feature)
+            model = trainer.recurrent_neural_network(train_dataloader,  model_config['seq_dim'], input_dim, model_config['hidden_dim'], model_config['layer_dim'], model_config['output_dim'], model_config['learning_rate'], loss_fn, model_config['num_epochs'], model_config['weight_decay'])
+            mse, rmse, mae, results_df = tester.recurrent_neural_network_regression(X_test, y_test, model_config['batch_size'], model_config['seq_dim'], input_dim, model, feature)
             torch.save(model.state_dict(), f'{model_path}/hierarchical_model_train_nr_{i}.pth')
 
         results_directory=f'{args.results_directory}/{args.atlas}_hierarchical'
