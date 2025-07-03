@@ -29,6 +29,8 @@ def main(args):
         y_test=df[args.label_names]
         X_test_to_scale = X_test.drop(columns=args.column_to_copy)
         scaler = joblib.load(f'{model_path}/scaler_train_nr_{i}.pkl')
+        X_test_to_scale = X_test_to_scale.fillna(0)
+
         X_test_scaled = scaler.transform(X_test_to_scale)
         X_test_scaled_df = pd.DataFrame(X_test_scaled, columns=X_test_to_scale.columns, index=X_test_to_scale.index)
         X_test = pd.concat([X_test_scaled_df, X_test[args.column_to_copy]], axis=1)
@@ -40,6 +42,7 @@ def main(args):
         X_test=preprocessor.add_sex_column(df, X_test)
         X_test.rename(columns={'male': str(X_test.shape[1])}, inplace=True)
         feature=args.label_names
+
 
         
         if args.model_name=='forest':
@@ -110,8 +113,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age preidction - testing on holdout set with PCA")
-    parser.add_argument("--model_name", nargs="?", default="forest", help="Model name: forest/svm/fnn/rnn", type=str)
-    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--data_type", nargs="?", default="all", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
     parser.add_argument("--components_nr", nargs="?", default=35, help="Number of components for principal component analysis", type=int)
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)
