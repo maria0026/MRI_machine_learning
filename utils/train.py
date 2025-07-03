@@ -123,7 +123,7 @@ class ModelTrainer:
         return model
     
     def catboost_regression_model(self, X_train, y_train, param_grid, feature):
-        model = CatBoostRegressor(silent=True)
+        model = CatBoostRegressor(task_type="GPU", devices='0', verbose=False, used_ram_limit='7gb')
         rand_search = RandomizedSearchCV(model, 
                                     param_distributions=param_grid, 
                                     n_iter=10, 
