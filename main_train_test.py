@@ -2,8 +2,6 @@ import pandas as pd
 import numpy as np
 from torch import nn
 import argparse
-from scipy.stats import randint, uniform
-import json
 import joblib
 from sklearn.model_selection import train_test_split
 from utils import dimensions_reduction, prepare_dataset, train, valid, test, nn_data
@@ -17,8 +15,13 @@ def main(args):
     trainer = train.ModelTrainer()
     tester = test.ModelTester()
     mses, rmses, maes, count_outliers_lower, count_outliers_upper = [], [], [], [], []
+
+    global_config, model_config = preprocessor.load_model_config(args.model_name, args.config_file)
+
     input_dim = args.components_nr + 1
     loss_fn = nn.MSELoss()
+
+    #path for saving model parameters
     model_path=f'models/{args.model_name}_{args.data_type}_valid_{args.valid}'
     if not os.path.exists(model_path):
         os.makedirs(model_path)
@@ -49,7 +52,7 @@ def main(args):
         identifier=df_test['identifier']
         df_test = df_test.drop(columns=args.columns_to_drop)
 
-    for i in range(args.n_crosval):
+    for i in range(global_config['n_crosval']):
         if args.division_by_total_volume:
             df = preprocessor.divide_by_total_volume(df)
             if args.test_data_type!="None":
@@ -121,10 +124,8 @@ def main(args):
    
 
         if args.model_name=='forest':
-            forest_param_dist = json.loads(args.forest_param_dist)
-            forest_param_dist['n_estimators'] = randint(*forest_param_dist['n_estimators'])
-            forest_param_dist['max_depth'] = randint(*forest_param_dist['max_depth'])
-            forest_param_dist['min_samples_leaf'] = randint(*forest_param_dist['min_samples_leaf'])
+            forest_param_dist = model_config.get("param_dist")
+            forest_param_dist = preprocessor.convert_dist_params(forest_param_dist)
             rf = trainer.random_forrest_regression_model(X_train, y_train, forest_param_dist, *feature)
             best_rf = rf.best_estimator_
             feature_importances = pd.Series(best_rf.feature_importances_, index=X_train.columns).sort_values(ascending=False)
@@ -136,9 +137,8 @@ def main(args):
 
 
         elif args.model_name=="svm":
-            svm_param_dist = json.loads(args.svm_param_dist)
-            svm_param_dist['C'] = randint(*svm_param_dist['C'])  
-            svm_param_dist['gamma'] = uniform(*svm_param_dist['gamma']) 
+            svm_param_dist = model_config.get("param_dist")
+            svm_param_dist = preprocessor.convert_dist_params(svm_param_dist)
             
             clf = trainer.svm_regression_model(X_train, y_train, svm_param_dist, feature)
             if args.valid:
@@ -165,19 +165,29 @@ def main(args):
         elif args.model_name=='fnn':
             y_train[feature] = y_train[feature]/100
             y_test[feature] = y_test[feature]/100
-            train_dataloader = nn_data.load_fnn_data(X_train, y_train, args.batch_size, feature)
-            model = trainer.feed_forward_neural_network(train_dataloader, input_dim, args.fnn_hidden_dim, args.output_dim, args.fnn_learning_rate, loss_fn, args.num_epochs, args.fnn_momentum, args.fnn_weight_decay)
+            train_dataloader = nn_data.load_fnn_data(X_train, y_train, model_config['batch_size'], feature)
+            model = trainer.feed_forward_neural_network(train_dataloader, input_dim,model_config['hidden_dim'], model_config['output_dim'], model_config['learning_rate'], loss_fn, model_config['num_epochs'],  model_config['momentum'],  model_config['weight_decay'])
             mse, rmse, mae, results_df, feature_importance = tester.neural_network_regression(X_test, y_test, args.batch_size, model,feature)
             importance_df = pd.concat([feature_importance.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
             torch.save(model.state_dict(), f'{model_path}/model_train_nr_{i}.pth')
 
+
         elif args.model_name=='rnn':
             y_train[feature] = y_train[feature]/100
             y_test[feature] = y_test[feature]/100
-            train_dataloader = nn_data.load_rnn_data(X_train, y_train, args.batch_size, feature)
-            model = trainer.recurrent_neural_network(train_dataloader, args.rnn_seq_dim, input_dim, args.rnn_hidden_dim, args.rnn_layer_dim, args.output_dim, args.rnn_learning_rate, loss_fn, args.num_epochs, args.rnn_weight_decay)
-            mse, rmse, mae, results_df = tester.recurrent_neural_network_regression(X_test, y_test, args.batch_size, args.rnn_seq_dim, input_dim, model, feature)
+            train_dataloader = nn_data.load_rnn_data(X_train, y_train, model_config['batch_size'], feature)
+            model = trainer.recurrent_neural_network(train_dataloader, model_config['seq_dim'], input_dim,  model_config['hidden_dim'],  model_config['layer_dim'],  model_config['output_dim'], model_config['learning_rate'], loss_fn,  model_config['num_epochs'],  model_config['weight_decay'])
+            mse, rmse, mae, results_df = tester.recurrent_neural_network_regression(X_test, y_test, model_config['batch_size'], model_config['seq_dim'], input_dim, model, feature)
             torch.save(model.state_dict(), f'{model_path}/model_train_nr_{i}.pth')
+
+
+        elif args.model_name == 'cat':
+            cat_param_dist = model_config.get("param_dist")
+            cat_param_dist = preprocessor.convert_dist_params(cat_param_dist)
+            model = trainer.catboost_regression_model(X_train, y_train, cat_param_dist, feature)
+            joblib.dump(model, f'{model_path}/model_train_nr_{i}.pkl')
+            mse, rmse, mae, results_df = tester.catboost_regression_model(X_test, y_test, feature, model)
+        
 
         if i==0:
             importance_df.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t')
@@ -217,8 +227,9 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age preidction - testing on test set with PCA")
-    parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
-    parser.add_argument("--data_type", nargs="?", default="all_big", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--config_file", nargs="?", default="config/models.yaml", help="Configuration file", type=str)
+    parser.add_argument("--model_name", nargs="?", default="cat", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
@@ -226,30 +237,6 @@ if __name__ == "__main__":
     parser.add_argument("--division_by_total_volume", nargs="?", default=1, help="Divide volumetric data by Estimated_Total_Intracranial_Volume: 1/0", type=bool)
     parser.add_argument("--n_most_important_features", nargs="?", default=20, help="Choose the number of extracting features that load into components")
     parser.add_argument("--components_nr", nargs="?", default=35, help="Number of components for principal component analysis", type=int)
-    parser.add_argument("--n_crosval", nargs="?", default=5, help="Number of crossvalidation", type=int)
-    parser.add_argument("--batch_size", nargs="?", default=64, help="Batch size", type=int)
-    parser.add_argument("--num_epochs", nargs="?", default=100, help="Number of epochs", type=int)
-    parser.add_argument("--forest_param_dist", nargs="?", default=json.dumps({
-        'n_estimators': [50, 500],
-        'max_depth': [1, 35],
-        'min_samples_leaf': [1, 8],
-        'min_samples_split': [2, 3, 5, 8, 10, 14, 20]}),
-        help="JSON string for random forest parameter distribution")
-    parser.add_argument("--svm_param_dist", nargs="?", default=json.dumps({
-        'C': [30, 40], 
-        'gamma': [0.0001, 0.0005],  
-        'kernel': ['rbf']  
-    }), help="JSON string for SVM parameter distribution")
-    parser.add_argument("--fnn_momentum", nargs="?", default=0.7, help="Momentum for feed forward neural network", type=float)
-    parser.add_argument("--fnn_weight_decay", nargs="?", default=0.01, help="Weight decay for feed forward neural network", type=float)
-    parser.add_argument("--rnn_weight_decay", nargs="?", default=0.008, help="Weight decay for recurrent neural network", type=float)
-    parser.add_argument("--fnn_learning_rate", nargs="?", default=0.075, help="Learning rate for feed forward neural network", type=float)
-    parser.add_argument("--rnn_learning_rate", nargs="?", default=1e-3, help="Learning rate for recurrent neural network", type=float)
-    parser.add_argument("--fnn_hidden_dim", nargs="?", default=20, help="Hidden dimension for feed forward neural network", type=int)
-    parser.add_argument("--rnn_hidden_dim", nargs="?", default=10, help="Hidden dimension for recurrent neural network", type=int)
-    parser.add_argument("--rnn_layer_dim", nargs="?", default=1, help="Layer dimension for recurrent neural network", type=int)
-    parser.add_argument("--rnn_seq_dim", nargs="?", default=1, help="Sequence dimension for recurrent neural network", type=int)
-    parser.add_argument("--output_dim", nargs="?", default=1, help="Output dimension for neural network", type=int)
     parser.add_argument("--results_directory", nargs="?", default="results", help="Directory for results", type=str)
     parser.add_argument("--label_names", nargs="?", default=["age"], help="Predicted parameters, list", type=list)
     parser.add_argument("--column_to_copy", nargs="?", default=['male'], help="Columns to copy", type=list)
