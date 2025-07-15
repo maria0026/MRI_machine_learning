@@ -15,7 +15,10 @@ def main(args):
     model_path=f'models/{args.atlas}/{args.model_name}_{args.data_type}_valid_{args.valid}'
     results_directory=f'{args.results_directory}/{args.atlas}'
 
-    df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out.csv', sep='\t')
+    if 'big' in args.data_type:
+        df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/leave_out_big.csv', sep='\t')
+    else:
+        df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/leave_out.csv', sep='\t')
     identifier=df['identifier']
     df = df.drop(columns=args.columns_to_drop, errors='ignore')
     input_dim = df.shape[1]-1

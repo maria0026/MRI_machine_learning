@@ -7,7 +7,7 @@ import os
 import torch
 from sklearn.model_selection import train_test_split
 from utils import prepare_dataset, train, valid, test, nn_data
-
+from pathlib import Path
 
 def main(args):
 
@@ -27,14 +27,19 @@ def main(args):
     df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/all_concatenated.csv', sep='\t')
     
 
-    if os.path.exists("data/leave_out_identifiers.csv"):
-        leave_ids = pd.read_csv("data/leave_out_identifiers.csv")['identifier']
+    is_big = 'big' in args.data_type
+    id_file = Path(f"data/leave_out_identifiers{'_big' if is_big else ''}.csv")
+    leave_out_csv = Path(f"data/{args.data_type}_norm_confirmed_normal/leave_out{'_big' if is_big else ''}.csv")
+
+    if id_file.exists():
+        leave_ids = pd.read_csv(id_file)['identifier']
         df_leave = df[df['identifier'].isin(leave_ids)]
         df = df[~df['identifier'].isin(leave_ids)]
     else:
         df, df_leave = train_test_split(df, test_size=0.15, random_state=42)
-        df_leave['identifier'].to_csv("data/leave_out_identifiers.csv", index=False)
-    df_leave.to_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out.csv', sep='\t', index=False)
+        df_leave['identifier'].to_csv(id_file, index=False)
+    df_leave.to_csv(leave_out_csv, sep='\t', index=False)
+
 
     identifier=df['identifier']
     df = df.drop(columns=args.columns_to_drop)

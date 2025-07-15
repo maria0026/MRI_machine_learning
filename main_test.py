@@ -16,7 +16,10 @@ def main(args):
     model_path=f'models/{args.model_name}_{args.data_type}_valid_{args.valid}'
     results_directory=f'{args.results_directory}'
 
-    df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/leave_out.csv', sep='\t')
+    if 'big' in args.data_type:
+        df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/leave_out_big.csv', sep='\t')
+    else:
+        df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/leave_out.csv', sep='\t')
     identifier=df['identifier']
     df = df.drop(columns=args.columns_to_drop, errors='ignore')
     input_dim = args.components_nr + 1
@@ -118,7 +121,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age preidction - testing on holdout set with PCA")
     parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
-    parser.add_argument("--data_type", nargs="?", default="all", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--data_type", nargs="?", default="all_big", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
     parser.add_argument("--components_nr", nargs="?", default=35, help="Number of components for principal component analysis", type=int)
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)

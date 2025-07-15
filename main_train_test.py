@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from utils import dimensions_reduction, prepare_dataset, train, valid, test, nn_data
 import os
 import torch
+from pathlib import Path
 
 def main(args):
 
@@ -33,15 +34,20 @@ def main(args):
     print("Min age:", df['age'].min())
 
     #create leave out dataset
-    if os.path.exists("data/leave_out_identifiers.csv"):
-        leave_ids = pd.read_csv("data/leave_out_identifiers.csv")['identifier']
+
+    is_big = 'big' in args.data_type
+    id_file = Path(f"data/leave_out_identifiers{'_big' if is_big else ''}.csv")
+    leave_out_csv = Path(f"data/{args.data_type}_norm_confirmed_normal/leave_out{'_big' if is_big else ''}.csv")
+
+    if id_file.exists():
+        leave_ids = pd.read_csv(id_file)['identifier']
         df_leave = df[df['identifier'].isin(leave_ids)]
         df = df[~df['identifier'].isin(leave_ids)]
     else:
         df, df_leave = train_test_split(df, test_size=0.15, random_state=42)
-        df_leave['identifier'].to_csv("data/leave_out_identifiers.csv", index=False)
-    df_leave.to_csv(f'data/{args.data_type}_norm_confirmed_normal/leave_out.csv', sep='\t', index=False)
-    
+        df_leave['identifier'].to_csv(id_file, index=False)
+    df_leave.to_csv(leave_out_csv, sep='\t', index=False)
+
     identifier=df['identifier']
     print(df['identifier'])
     print(df.shape)
@@ -230,7 +236,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age preidction - testing on test set with PCA")
     parser.add_argument("--config_file", nargs="?", default="config/models.yaml", help="Configuration file", type=str)
     parser.add_argument("--model_name", nargs="?", default="cat", help="Model name: forest/svm/fnn/rnn", type=str)
-    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--data_type", nargs="?", default="all_big", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
