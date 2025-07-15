@@ -182,6 +182,7 @@ def main(args):
 
 
         elif args.model_name == 'cat':
+            X_train = X_train.astype(np.float32)
             cat_param_dist = model_config.get("param_dist")
             cat_param_dist = preprocessor.convert_dist_params(cat_param_dist)
             model = trainer.catboost_regression_model(X_train, y_train, cat_param_dist, feature)
