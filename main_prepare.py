@@ -12,11 +12,11 @@ def main(args):
     processor.convert_delimiter(args.delimiter, args.old_delimiter, args.old_delimiter_2)
     processor.convert_line_endings()
 
-    if args.data_type=="positive":
+    if "positive" in args.data_type:
         norm_confimed=1
-    elif args.data_type=="negative":
+    elif "negative" in args.data_type:
         norm_confimed=0
-    elif args.data_type=="all":
+    elif "all" in args.data_type:
         norm_confimed=3
 
     #deleting duplicated columns
@@ -75,10 +75,10 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("parser for deleting unnormal features")
-    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--data_type", nargs="?", default="all_big", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--subjects_file", nargs="?", default="Subjects.csv", help="Name of the file with subjects", type=str)
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier', 'norm_confirmed', 'sex', 'male', 'female', 'age','Estimated_Total_Intracranial_Volume'], help="Columns to drop", type=list)
-    parser.add_argument("--path", nargs="?", default="data/original", help="Path to the folder where the original files are", type=str)
+    parser.add_argument("--path", nargs="?", default="data/original_big", help="Path to the folder where the original files are", type=str)
     parser.add_argument("--old_delimiter", nargs="?", default=",", help="Old delimiter", type=str)
     parser.add_argument("--old_delimiter_2", nargs="?", default=";", help="Old delimiter", type=str)
     parser.add_argument("--delimiter", nargs="?", default="\t", help="New delimiter", type=str)
