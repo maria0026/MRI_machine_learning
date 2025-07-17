@@ -20,7 +20,7 @@ def main(args):
     global_config, model_config = preprocessor.load_model_config(args.model_name, args.config_file)
 
     input_dim = args.components_nr + 1
-    loss_fn = nn.MSELoss()
+    loss_fn = nn.L1Loss()
 
     #path for saving model parameters
     model_path=f'models/{args.model_name}_{args.data_type}_valid_{args.valid}'
