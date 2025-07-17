@@ -27,8 +27,8 @@ class AnomaliesDetector:
                 p = np.nan
             else:
                 try:
-                    #_, p = stats.kstest(data, 'norm', args=(np.mean(data), std_all))
-                    _, p = stats.normaltest(data)
+                    _, p = stats.kstest(data, 'norm', args=(np.mean(data), std_all))
+                    #_, p = stats.normaltest(data)
                 except Exception:
                     p = np.nan
 
@@ -54,9 +54,9 @@ class AnomaliesDetector:
                 test_result = np.nan
             else:
                 try:
-                    #_, p_after = stats.kstest(data_no_outliers, 'norm',
-                                            #args=(np.mean(data_no_outliers), np.std(data_no_outliers)))
-                    _, p_after = stats.normaltest(data_no_outliers)
+                    _, p_after = stats.kstest(data_no_outliers, 'norm',
+                                            args=(np.mean(data_no_outliers), np.std(data_no_outliers)))
+                    #_, p_after = stats.normaltest(data_no_outliers)
                     test_result = int(p_after < 0.05)
                 except Exception:
                     p_after = np.nan
