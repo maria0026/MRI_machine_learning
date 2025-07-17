@@ -9,7 +9,7 @@ import itertools
 from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import confusion_matrix
 from utils import nn_data, nn_model
-from eli5.sklearn import PermutationImportance
+from sklearn.inspection import permutation_importance
 from torch.autograd import Variable
 
 
@@ -95,21 +95,32 @@ class ModelTester:
             'identifier': y_test['identifier'].values
         })
 
-        # Feature Importance with eli5
+        #feature importance 
         if importance:
-            perm = PermutationImportance(clf.best_estimator_, scoring='neg_mean_absolute_error', n_iter=5).fit(X_test, y_test_flat)
+            result = permutation_importance(
+                clf.best_estimator_,
+                X_test,
+                y_test_flat,
+                scoring='neg_mean_absolute_error',
+                n_repeats=5,
+                random_state=42
+            )
+
             if comp:
-                df_fi = pd.DataFrame(dict(component_names=X_test.columns.tolist(),
-                                    comp_imp=perm.feature_importances_, 
-                                    std=perm.feature_importances_std_,
-                                        ))
+                df_fi = pd.DataFrame(dict(
+                    component_names=X_test.columns.tolist(),
+                    comp_imp=result.importances_mean,
+                    std=result.importances_std
+                ))
             else:
-                df_fi = pd.DataFrame(dict(feature_name=X_test.columns.tolist(),
-                                    feature_importance=perm.feature_importances_, 
-                                    ))
+                df_fi = pd.DataFrame(dict(
+                    feature_name=X_test.columns.tolist(),
+                    feature_importance=result.importances_mean
+                ))
+
             df_fi = df_fi.round(4)
         else:
-            df_fi=[]
+            df_fi = []
 
         return mse, rmse, mae, results_df, df_fi
 
@@ -202,19 +213,26 @@ class ModelTester:
         # Wrap the model with the scikit-learn wrapper
         sklearn_model = nn_model.SklearnPyTorchWrapper(model)
 
-        # Feature Importance with eli5
-        perm = PermutationImportance(sklearn_model, n_iter=5).fit(X_test, y_test_flat)
-        df_fi = pd.DataFrame(dict(component_names=X_test.columns.tolist(),
-                            comp_imp=perm.feature_importances_, 
-                            std=perm.feature_importances_std_,
-                                ))
+        result = permutation_importance(
+            sklearn_model,
+            X_test,
+            y_test_flat,
+            n_repeats=5,
+            random_state=42  # dodane dla powtarzalności, ale opcjonalne
+        )
+
+        df_fi = pd.DataFrame(dict(
+            component_names=X_test.columns.tolist(),
+            comp_imp=result.importances_mean,
+            std=result.importances_std
+        ))
         df_fi = df_fi.round(4)
 
 
         return accuracy, precision, recall, FPR, cf_matrix, fpr, tpr, df_fi
 
     def neural_network_regression(self, X_test, y_test, batch_size, model, feature):
-        test_data =nn_data.Data(X_test, y_test[feature], y_test['identifier'].values)
+        test_data = nn_data.Data(X_test, y_test[feature], y_test['identifier'].values)
         test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
 
         y_pred = []
@@ -246,12 +264,20 @@ class ModelTester:
         # Wrap the model with the scikit-learn wrapper
         sklearn_model = nn_model.SklearnPyTorchWrapper(model)
 
-        # Feature Importance with eli5
-        perm = PermutationImportance(sklearn_model, scoring='neg_mean_absolute_error', n_iter=5).fit(X_test, y_test_flat)
-        df_fi = pd.DataFrame(dict(component_names=X_test.columns.tolist(),
-                            comp_imp=perm.feature_importances_, 
-                            std=perm.feature_importances_std_,
-                                ))
+        result = permutation_importance(
+            sklearn_model,
+            X_test,
+            y_test_flat,
+            scoring='neg_mean_absolute_error',
+            n_repeats=5,
+            random_state=42  # dodane dla powtarzalności, ale opcjonalne
+        )
+
+        df_fi = pd.DataFrame(dict(
+            component_names=X_test.columns.tolist(),
+            comp_imp=result.importances_mean,
+            std=result.importances_std
+        ))
         df_fi = df_fi.round(4)
 
         return mse, rmse, mae, y_pred_df, df_fi
