@@ -129,6 +129,6 @@ class ModelTrainer:
                                     n_iter=10, 
                                     cv=5,
                                     scoring='neg_mean_squared_error',
-                                    verbose=0)   
+                                    verbose=0, error_score='raise', n_jobs=1)   
         rand_search.fit(X_train, y_train[feature])
         return rand_search
