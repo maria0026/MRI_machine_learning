@@ -11,7 +11,8 @@ from sklearn.metrics import r2_score
 from collections import Counter
 from itertools import combinations
 from tqdm import tqdm
-
+import umap
+from sklearn.preprocessing import StandardScaler
 
 class DimensionsReductor:
 
@@ -158,7 +159,7 @@ class DimensionsReductor:
 
     def hierarchical_feature_selection(self, X, y, trainer, tester, model, svm_param_dist, test_feature,
                                     n_groups=10, top_fraction=0.5, final_n_features=10,
-                                    max_subset_size=3, random_state=42):
+                                    max_subset_size=4, random_state=42):
         
         rng = np.random.default_rng(random_state)
         feature_names = list(X.columns)
@@ -205,3 +206,13 @@ class DimensionsReductor:
             current_features = [feature for feature, count in most_common_features]
 
         return current_features
+
+    def umap(self, X_train, X_test, X_val=None, validation=False, n_components=30):
+
+        reducer = umap.UMAP(n_components = n_components)
+
+        embedding = reducer.fit_transform(X_train)
+        test = reducer.transform(X_test)
+        val = reducer.transform(X_val) if validation else None
+
+        return reducer, embedding, val, test
