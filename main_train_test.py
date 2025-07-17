@@ -173,7 +173,7 @@ def main(args):
             y_test[feature] = y_test[feature]/100
             train_dataloader = nn_data.load_fnn_data(X_train, y_train, model_config['batch_size'], feature)
             model = trainer.feed_forward_neural_network(train_dataloader, input_dim,model_config['hidden_dim'], model_config['output_dim'], model_config['learning_rate'], loss_fn, model_config['num_epochs'],  model_config['momentum'],  model_config['weight_decay'])
-            mse, rmse, mae, results_df, feature_importance = tester.neural_network_regression(X_test, y_test, args.batch_size, model,feature)
+            mse, rmse, mae, results_df, feature_importance = tester.neural_network_regression(X_test, y_test, model_config['batch_size'], model,feature)
             importance_df = pd.concat([feature_importance.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
             torch.save(model.state_dict(), f'{model_path}/model_train_nr_{i}.pth')
 
@@ -235,8 +235,8 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age preidction - testing on test set with PCA")
     parser.add_argument("--config_file", nargs="?", default="config/models.yaml", help="Configuration file", type=str)
-    parser.add_argument("--model_name", nargs="?", default="cat", help="Model name: forest/svm/fnn/rnn", type=str)
-    parser.add_argument("--data_type", nargs="?", default="all_big", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--model_name", nargs="?", default="fnn", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
