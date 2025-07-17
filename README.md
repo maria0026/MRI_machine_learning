@@ -5,8 +5,8 @@ The project folder contains four main scripts with "main" in their names, where 
 
     main_prepare.py: Prepares the data by replacing commas with dots, unifying delimiters, converting end-of-line characters, removing redundant columns, and merging CSV files. The processed files are by default saved in the folder data/data_type_norm_confirmed.
     main_delete_unnormal_features.py: Detects and removes columns that do not have a normal distribution. If testing on a different data type is required later, the argument test_data_type (default: None) should also be set to one of the values similarly to how data_type is set. The processed files are by default saved in the folder data/data_type_norm_confirmed_normal.
-    main_age.py: Standardizes the data, divides the data by Estimated_Total_Intracranial_Volume, applies PCA, selects the gender, and trains and tests the model to predict age. An additional important argument is model_name.
-    main_sex.py: Standardizes the data, applies PCA, and trains and tests the model to predict gender. An additional important argument is model_name.
+    main_train_test.py: Standardizes the data, divides the data by Estimated_Total_Intracranial_Volume, applies PCA, selects the gender, and trains and tests the model to predict age. An additional important argument is model_name.
+    main_test.py
     data: Folder containing original and processed data.
     results: Folder for saving CSV files with normality test results, outlier counts, PCA results, or component importance.
     data_info.ipynb: Jupyter notebook for generating plots.
