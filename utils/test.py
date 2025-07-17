@@ -236,7 +236,7 @@ class ModelTester:
         test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
 
         y_pred = []
-        y_test = []
+        y_test_list = []
 
         model.eval()
         with torch.no_grad():
@@ -247,10 +247,10 @@ class ModelTester:
                 y = y.view(-1).numpy()
 
                 y_pred.append(predicted)
-                y_test.append(y)
+                y_test_list.append(y)
                 
         y_pred_flat = np.array([item for sublist in y_pred for item in sublist])*100
-        y_test_flat = np.array([item for sublist in y_test for item in sublist])*100
+        y_test_flat = np.array([item for sublist in y_test_list for item in sublist])*100
         #create dataframe from y_pred and y_test
         y_pred_df=pd.DataFrame({'Actual':np.array(y_test_flat),
                             'Predicted':np.array(y_pred_flat)})
