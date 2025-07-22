@@ -1,5 +1,5 @@
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, RobustScaler
 import os
 from scipy.stats import randint, uniform
 import pandas as pd
@@ -47,6 +47,7 @@ class DatasetPreprocessor:
 
     def standardize_data(self, X_train, X_val, X_test, column_to_copy=[]):
         scaler = StandardScaler()
+        #scaler = RobustScaler()
 
         X_train_to_scale = X_train.drop(columns=column_to_copy)
         X_test_to_scale = X_test.drop(columns=column_to_copy)
