@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, KernelPCA
 import matplotlib.pyplot as plt
 import numpy as np 
 from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
@@ -13,6 +13,9 @@ from itertools import combinations
 from tqdm import tqdm
 import umap
 from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from collections import Counter
+from sklearn.model_selection import StratifiedKFold
 
 class DimensionsReductor:
 
@@ -28,12 +31,17 @@ class DimensionsReductor:
     def principal_component_analysis(self, X_train, X_test, components_nr, n_features=3, X_val=None, validation=False):
 
         pca_mri = PCA(components_nr)
+        #pca_mri = KernelPCA(
+        #    n_components=55, kernel="rbf", gamma=None
+        #)
 
         train_pca = pca_mri.fit_transform(X_train)
         test_pca = pca_mri.transform(X_test)
         if validation:
             val_pca = pca_mri.transform(X_val)
 
+        print("Train pca: ", train_pca.shape)
+        
         explained_variance_ratio=pca_mri.explained_variance_ratio_
         formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
 
@@ -65,7 +73,8 @@ class DimensionsReductor:
 
         # Ustawienie indeksów
         importance_df.index = range(1, len(importance_df) + 1)
-
+        
+        #importance_df = None
         if validation:
             return pca_mri, train_pca, val_pca, test_pca,  importance_df
 
@@ -216,3 +225,37 @@ class DimensionsReductor:
         val = reducer.transform(X_val) if validation else None
 
         return reducer, embedding, val, test
+
+
+    def nested_crossvalidation(self, X_trainval, y_trainval, model):
+        outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+        all_selected_features = []
+
+        for outer_train_idx, outer_val_idx in outer_cv.split(X_trainval, y_trainval):
+            X_outer_train, X_outer_val = X_trainval.iloc[outer_train_idx], X_trainval.iloc[outer_val_idx]
+            y_outer_train, y_outer_val = y_trainval.iloc[outer_train_idx], y_trainval.iloc[outer_val_idx]
+
+            inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+            feature_scores = Counter()
+
+            for inner_train_idx, inner_val_idx in inner_cv.split(X_outer_train, y_outer_train):
+                X_inner_train, X_inner_val = X_outer_train.iloc[inner_train_idx], X_outer_train.iloc[inner_val_idx]
+                y_inner_train, y_inner_val = y_outer_train.iloc[inner_train_idx], y_outer_train.iloc[inner_val_idx]
+
+                # Przykładowa procedura oceny cech — wybieramy top 10 według ważności z RandomForest
+                #model = RandomForestClassifier(random_state=42)
+                model.fit(X_inner_train, y_inner_train)
+                importances = model.feature_importances_
+                top_features = X_inner_train.columns[np.argsort(importances)[-10:]]
+
+                feature_scores.update(top_features)
+
+            # Wybór cech, które najczęściej pojawiały się w top 10
+            selected_features = [feat for feat, count in feature_scores.items() if count >= 2]
+            all_selected_features.extend(selected_features)
+
+        # Agregacja cech ze wszystkich foldów zewnętrznych
+        final_feature_counts = Counter(all_selected_features)
+        final_features = [feat for feat, count in final_feature_counts.items() if count >= 3]
+        
+        return final_features
