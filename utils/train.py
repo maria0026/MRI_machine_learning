@@ -7,6 +7,8 @@ import torch
 from torch.autograd import Variable
 from catboost import CatBoostRegressor
 from utils import nn_data, nn_model
+import numpy as np
+import matplotlib.pyplot as plt
 
 class ModelTrainer:
     def __init__(self):
@@ -52,6 +54,10 @@ class ModelTrainer:
         grid.fit(X_train, y_train[feature].values.ravel())
 
         return grid
+    
+    def cost_function(self, X, y):
+
+        loss = 0
 
 
     def feed_forward_neural_network(self, train_dataloader, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs, momentum=0, weight_decay=0):
@@ -64,19 +70,50 @@ class ModelTrainer:
         loss_values = []
         model.train()
         for epoch in range(num_epochs):
+            batch_losses = []
             for X, y, ids in train_dataloader:
-
+                #mean_mae = 0
                 optimizer.zero_grad()
                 pred = model(X)
 
                 y = y.view(-1, 1)
+                #mean_mae = (torch.sum(abs(pred - y))*100) / len(pred)
+                #print(mean_mae)
                 loss = loss_fn(pred, y)
-                loss_values.append(loss.item())
+                
+
+                mae_batch = torch.mean(torch.abs(pred - y)) * 100
+                y = y.view(-1) * 100
+                pred = pred * 100
+                bin_edges = list(range(0, 101, 10))
+
+                for i in range(len(bin_edges)-1):
+                    mae_roznica = 0
+                    low = bin_edges[i]
+                    high = bin_edges[i+1]
+                    mask = (y >= low) & (y < high)
+                    count = mask.sum()
+                    pred_bin = pred[mask]
+                    y_bin = y[mask]
+                    roznice = torch.abs(pred_bin - y_bin)
+                    mae_bin = torch.mean(roznice)
+                    #print("Srednie mae: ", mae_bin)
+
+                    if count>0:
+                        mae_roznica = torch.abs(mae_bin - mae_batch)
+
+                    #print(f"Przedział {low}-{high - 1}: {count.item()} przykładów")
+                        loss += 0.1 * mae_roznica/100
+
+                batch_losses.append(loss.item())    
                 loss.backward()
                 optimizer.step()
-        '''
-        step = np.linspace(0, 100, 2600)
 
+            mean_epoch_loss = np.mean(batch_losses)
+            loss_values.append(mean_epoch_loss)
+        
+        step = np.linspace(0, 100, 100)
+        '''
         fig, ax = plt.subplots(figsize=(8,5))
         plt.plot(step, np.array(loss_values))
         plt.title("Step-wise Loss")
@@ -85,7 +122,7 @@ class ModelTrainer:
         plt.show()
         '''
         print("Training Complete")
-
+        
         return model
 
     def recurrent_neural_network(self, train_dataloader, seq_dim, input_dim, hidden_dim, layer_dim, output_dim, learning_rate, loss_fn, num_epochs, weight_decay=0):
