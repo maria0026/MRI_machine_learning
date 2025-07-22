@@ -36,7 +36,7 @@ fnn:
   learning_rate: 0.075
   momentum: 0.7
   weight_decay: 0.01
-  batch_size: 64
+  batch_size: 128
 rnn:
   num_epochs: 100
   output_dim: 1
