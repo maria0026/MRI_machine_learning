@@ -19,7 +19,7 @@ def main(args):
 
     global_config, model_config = preprocessor.load_model_config(args.model_name, args.config_file)
 
-    input_dim = args.components_nr + 1
+    #input_dim = args.components_nr + 1
     loss_fn = nn.L1Loss()
 
     #path for saving model parameters
@@ -81,10 +81,12 @@ def main(args):
         
         #PCA
         pca_mri, train_pca, val_pca, test_pca, importance_df = reductor.principal_component_analysis(X_train, X_test, args.components_nr, args.n_most_important_features, X_val=X_val, validation=args.valid)
+        components_nr = train_pca.shape[1]
+        input_dim = components_nr + 1
         joblib.dump(pca_mri, f'{model_path}_pca_mri_train_nr_{i}.pkl')
-        explained_variance_ratio = pca_mri.explained_variance_ratio_
-        formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
-        print('Explained variability per principal component: {}'.format(formatted_explained_variance))
+        #explained_variance_ratio = pca_mri.explained_variance_ratio_
+        #formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
+        #print('Explained variability per principal component: {}'.format(formatted_explained_variance))
 
         train_principal_Df = pd.DataFrame(data = train_pca
                     , columns = [str(i) for i in range(1,train_pca.shape[1]+1)], index=X_train.index)
@@ -107,22 +109,22 @@ def main(args):
 
         if args.sex_subset == 'all':
             X_train = train_principal_Df
-            X_train.rename(columns={'male': str(args.components_nr + 1)}, inplace=True)
+            X_train.rename(columns={'male': str(components_nr + 1)}, inplace=True)
 
             X_test = test_principal_Df
-            X_test.rename(columns={'male': str(args.components_nr + 1)}, inplace=True)
+            X_test.rename(columns={'male': str(components_nr + 1)}, inplace=True)
             if args.valid:
                 X_val = val_principal_Df
-                X_val.rename(columns={'male': str(args.components_nr + 1)}, inplace=True)
+                X_val.rename(columns={'male': str(components_nr + 1)}, inplace=True)
         else:
             sex_value = 1 if args.sex_subset == 'male' else 0
             X_train = X_train[X_train['male'] == sex_value]
-            X_train.rename(columns={'male': str(args.components_nr + 1)}, inplace=True)
+            X_train.rename(columns={'male': str(components_nr + 1)}, inplace=True)
             X_test = X_test[X_test['male'] == sex_value]
-            X_test.rename(columns={'male': str(args.components_nr + 1)}, inplace=True)
+            X_test.rename(columns={'male': str(components_nr + 1)}, inplace=True)
             if args.valid:
                 X_val = X_val[X_val['male'] == sex_value]
-                X_val.rename(columns={'male': str(args.components_nr + 1)}, inplace=True)
+                X_val.rename(columns={'male': str(components_nr + 1)}, inplace=True)
         
         feature=args.label_names
         print("Odchylenie",np.std(y_train[feature[0]]))
@@ -172,8 +174,9 @@ def main(args):
             y_train[feature] = y_train[feature]/100
             y_test[feature] = y_test[feature]/100
             train_dataloader = nn_data.load_fnn_data(X_train, y_train, model_config['batch_size'], feature)
-            model = trainer.feed_forward_neural_network(train_dataloader, input_dim,model_config['hidden_dim'], model_config['output_dim'], model_config['learning_rate'], loss_fn, model_config['num_epochs'],  model_config['momentum'],  model_config['weight_decay'])
-            mse, rmse, mae, results_df, feature_importance = tester.neural_network_regression(X_test, y_test, model_config['batch_size'], model,feature)
+            model = trainer.feed_forward_neural_network(train_dataloader, input_dim, model_config['hidden_dim'], model_config['output_dim'], model_config['learning_rate'], loss_fn, model_config['num_epochs'],  model_config['momentum'],  model_config['weight_decay'])
+            mse, rmse, mae, results_df, feature_importance = tester.neural_network_regression(X_test, y_test, model_config['batch_size'], model, feature)
+            #if importance_df != None:
             importance_df = pd.concat([feature_importance.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
             torch.save(model.state_dict(), f'{model_path}/model_train_nr_{i}.pth')
 
@@ -197,12 +200,14 @@ def main(args):
         
 
         if i==0:
+            #if importance_df != None:
             importance_df.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t')
             results_df.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
             
             if args.model_name=='svm':
                 identifiers.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_identifiers_{args.model_name}_valid_{args.valid}.csv', sep='\t')
         else:
+            #if importance_df != None:
             importance_df_old = pd.read_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index_col=0)
             importance_df = pd.concat([importance_df_old, importance_df], axis = 1)
             importance_df.to_csv(f'{args.results_directory}/train_{args.data_type}_test_{args.test_data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=True)
@@ -236,7 +241,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age preidction - testing on test set with PCA")
     parser.add_argument("--config_file", nargs="?", default="config/models.yaml", help="Configuration file", type=str)
     parser.add_argument("--model_name", nargs="?", default="fnn", help="Model name: forest/svm/fnn/rnn", type=str)
-    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--data_type", nargs="?", default="all", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
