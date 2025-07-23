@@ -11,7 +11,7 @@ from sklearn.metrics import confusion_matrix
 from utils import nn_data, nn_model
 from sklearn.inspection import permutation_importance
 from torch.autograd import Variable
-
+import shap
 
 class ModelTester:
     def __init__(self):
@@ -76,7 +76,7 @@ class ModelTester:
         return accuracy, precision, recall, cm, fpr, tpr
 
 
-    def svm_regression_model(self, X_test, y_test, clf, z=None, feature=None, comp=True, importance=True):
+    def svm_regression_model(self, X_test, y_test, clf, z=None, feature=None, comp=True, importance=True, shap_bool=False):
         #print('Best hyperparameters:',  clf.best_params_)
 
         y_pred = clf.predict(X_test)
@@ -119,6 +119,15 @@ class ModelTester:
                 ))
 
             df_fi = df_fi.round(4)
+
+            if shap_bool:
+                explainer = shap.KernelExplainer(clf.predict, shap.sample(X_test, 100, random_state=42))
+                shap_values = explainer.shap_values(X_test, n_samples=100)
+                shap.summary_plot(shap_values, X_test, show=False)
+                plt.savefig("shap_summary_plot.png", bbox_inches="tight")
+                shap.plots.beeswarm(shap.Explanation(values=shap_values, data=X_test, feature_names=X_test.columns))
+
+
         else:
             df_fi = []
 

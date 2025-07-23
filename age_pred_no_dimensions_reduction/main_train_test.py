@@ -91,7 +91,7 @@ def main(args):
                 z=None
                 z_quantiles=None
     
-            mse, rmse, mae, results_df, feature_importance = tester.svm_regression_model(X_test, y_test, clf, z=z, feature=feature)
+            mse, rmse, mae, results_df, feature_importance = tester.svm_regression_model(X_test, y_test, clf, z=z, feature=feature, comp = False, importance = True, shap_bool=args.shap)
             identifiers_lower, identifiers_upper, sex_lower, sex_upper = tester.svm_regression_model_quantiles(results_df, y_test, z_quantiles=z_quantiles, feature=feature, plot=args.plot, first_quantile=args.first_quantile, last_quantile=args.last_quantile)
             joblib.dump(clf, f'{model_path}/model_train_nr_{i}.pkl')
             joblib.dump(z, f'{model_path}/z_train_nr_{i}.pkl')
@@ -158,9 +158,10 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age preidction - testing on test set without dimensionality reduction")
     parser.add_argument("--config_file", nargs="?", default="config/models.yaml", help="Configuration file", type=str)
-    parser.add_argument("--atlas", nargs="?", default="APARC", help="atlas", type=str)
+    parser.add_argument("--atlas", nargs="?", default="ASEG", help="atlas", type=str)
     parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
-    parser.add_argument("--valid", nargs="?", default=1, help="create valid set: 0/1", type=bool)
+    parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
+    parser.add_argument("--shap", nargs="?", default=1, help="calculate shap values", type=bool)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)
