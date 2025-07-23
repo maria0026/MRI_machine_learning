@@ -26,8 +26,8 @@ svm:
       high: 40
     gamma:
       type: uniform
-      low: 0.00001
-      high: 0.00007
+      low: 0.0001
+      high: 0.0007
     kernel: ['rbf']
 fnn:
   num_epochs: 100
