@@ -55,7 +55,7 @@ def main(args):
         feature=args.label_names
         X_train, X_val, X_test, y_train, y_val, y_test = preprocessor.split_dataset(df, args.label_names, test_size=global_config['test_size'], valid=args.valid)
         X_train, X_val, X_test, scaler = preprocessor.standardize_data(X_train, X_val, X_test, column_to_copy=args.column_to_copy)
-        joblib.dump(scaler, f'{model_path}/scaler_train_nr_{i}.pkl')
+        joblib.dump(scaler, f'{model_path}/hierachical_scaler_train_nr_{i}.pkl')
         y_test['identifier'] = identifier
         y_test['male']=X_test['male']
         print("Odchylenie",np.std(y_train[feature[0]]))
@@ -85,7 +85,7 @@ def main(args):
             X_train_h = X_train
 
             features=reductor.hierarchical_feature_selection(X_train_h, y_train_h, trainer, tester, args.model_name, svm_param_dist, feature)
-            
+            #features =['APARC-ctx-rh-transversetemporal_ThickStd', 'APARC-ctx-lh-superiorparietal_ThickStd', 'APARC-ctx-lh-caudalanteriorcingulate_ThickStd', 'APARC-ctx-rh-entorhinal_ThickStd', 'APARC-ctx-rh-inferiorparietal_ThickStd', 'APARC-ctx-lh-temporalpole_ThickStd', 'APARC-ctx-rh-pericalcarine_GrayVol', 'APARC-ctx-rh-caudalanteriorcingulate_ThickStd']
             print("Selected features", features)
             joblib.dump(features, features_path)
             print(f"Saved selected features from iteration {i}")
@@ -156,7 +156,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age prediction - testing on test set with hierachical clustering feature selection")
     parser.add_argument("--config_file", nargs="?", default="config/models.yaml", help="Configuration file", type=str)
-    parser.add_argument("--atlas", nargs="?", default="ASEG", help="atlas", type=str)
+    parser.add_argument("--atlas", nargs="?", default="APARC", help="atlas", type=str)
     parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--valid", nargs="?", default=1, help="create valid set: 0/1", type=bool)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
@@ -165,6 +165,6 @@ if __name__ == "__main__":
     parser.add_argument("--label_names", nargs="+", default=["age"], help="Predicted parameters")
     parser.add_argument("--column_to_copy", nargs="+", default=['male'], help="Columns to copy")
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)
-    parser.add_argument("--plot", nargs="?", default=1, help="Plot results folder name", type=bool)
+    parser.add_argument("--plot", nargs="?", default=0, help="Plot results folder name", type=bool)
     args = parser.parse_args()
     main(args)
