@@ -5,6 +5,7 @@ from utils import test
 import torch
 import numpy as np
 from utils import nn_model
+from sklearn.metrics import mean_absolute_error
 
 def main(args):
 
@@ -15,10 +16,19 @@ def main(args):
     model_path=f'models/{args.atlas}/{args.model_name}_{args.data_type}_valid_{args.valid}'
     results_directory=f'{args.results_directory}/{args.atlas}'
 
-    if 'big' in args.data_type:
-        df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/leave_out_big.csv', sep='\t')
+    if args.test_path!=1:
+        if 'big' in args.data_type:
+            df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out_big.csv', sep='\t')
+        else:
+            df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out.csv', sep='\t')
     else:
-        df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/leave_out.csv', sep='\t')
+        df_lh = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}_pathology/LHAPARC.csv', sep='\t')
+        df_rh = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}_pathology/RHAPARC.csv', sep='\t')
+        df_subj = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}_pathology/Subjects.csv', sep='\t')
+        df = pd.concat([df_subj, df_rh, df_lh], axis=1)
+        print(df)
+
+
     identifier=df['identifier']
     df = df.drop(columns=args.columns_to_drop, errors='ignore')
     input_dim = df.shape[1]-1
@@ -29,12 +39,17 @@ def main(args):
         X_test=df.drop(columns=args.label_names)
         y_test=df[args.label_names]
         X_test_to_scale = X_test.drop(columns=args.column_to_copy)
-        scaler = joblib.load(f'{model_path}/scaler_train_nr_{i}.pkl')
+        scaler = joblib.load(f'{model_path}/hierachical_scaler_train_nr_{i}.pkl')
         X_test_scaled = scaler.transform(X_test_to_scale)
         X_test_scaled_df = pd.DataFrame(X_test_scaled, columns=X_test_to_scale.columns, index=X_test_to_scale.index)
         X_test = pd.concat([X_test_scaled_df, X_test[args.column_to_copy]], axis=1)
         y_test['identifier'] = identifier
         feature=args.label_names
+
+
+        features_path = f'{model_path}/selected_features_train_nr_{i}.pkl'
+        features = joblib.load(features_path)
+        print(f'Features selected {features}')
 
         if args.model_name=='forest':
             rf= joblib.load( f'{model_path}/model_train_nr_{i}.pkl')
@@ -42,10 +57,13 @@ def main(args):
 
 
         elif args.model_name=="svm":
-            #X_test = X_test[features]
-            clf= joblib.load( f'{model_path}/model_train_nr_{i}.pkl')
+            X_test = X_test[features]
+            print(X_test.columns)
+            y_shuffled = np.random.permutation(y_test['age'])
+            print("test", mean_absolute_error(y_test['age'], y_shuffled))
+            clf = joblib.load( f'{model_path}/hierachical_model_train_nr_{i}.pkl')
             if args.valid==1:
-                z= joblib.load(f'models/{args.model_name}_z_train_nr_{i}.pkl')
+                z= joblib.load(f'{model_path}/hierachical_z_train_nr_{i}.pkl')
             else:
                 z=None
             mse, rmse, mae, results_df, feature_importance = tester.svm_regression_model(X_test, y_test, clf, z=z, feature=feature, comp=False)
@@ -89,7 +107,7 @@ def main(args):
 
                 importance_df.to_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=True)
 
-            print("MAE:", mae)
+        print("MAE:", mae)
 
         mses.append(mse)
         rmses.append(rmse)
@@ -104,10 +122,11 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age prediction - testing on holdout set without dimensionality reduction")
-    parser.add_argument("--model_name", nargs="?", default="rnn", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--atlas", nargs="?", default="APARC", help="Atlas used for feature extraction", type=str)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
-    parser.add_argument("--valid", nargs="?", default=0, help="Create valid set and detrend: 0 (no) /1 (yes)", type=bool)
+    parser.add_argument("--valid", nargs="?", default=1, help="Create valid set and detrend: 0 (no) /1 (yes)", type=bool)
+    parser.add_argument("--test_path", nargs="?", default=0, help="Create valid set and detrend: 0 (no) /1 (yes)", type=bool)
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)
     parser.add_argument("--label_names", nargs="?", default=["age"], help="Predicted parameters, list", type=list)
     parser.add_argument("--column_to_copy", nargs="?", default=['male'], help="Columns to copy", type=list)
