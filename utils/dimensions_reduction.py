@@ -16,6 +16,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from collections import Counter
 from sklearn.model_selection import StratifiedKFold
+from sklearn import svm
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.inspection import permutation_importance
+from sklearn.model_selection import KFold
 
 class DimensionsReductor:
 
@@ -168,7 +172,7 @@ class DimensionsReductor:
 
     def hierarchical_feature_selection(self, X, y, trainer, tester, model, svm_param_dist, test_feature,
                                     n_groups=10, top_fraction=0.5, final_n_features=10,
-                                    max_subset_size=4, random_state=42):
+                                    max_subset_size=3, random_state=42):
         
         rng = np.random.default_rng(random_state)
         feature_names = list(X.columns)
@@ -227,15 +231,17 @@ class DimensionsReductor:
         return reducer, embedding, val, test
 
 
-    def nested_crossvalidation(self, X_trainval, y_trainval, model):
-        outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    def nested_crossvalidation(self, X_trainval, y_trainval, param_grid, feature):
+
+        #y_trainval = y_trainval.values.ravel()
+        outer_cv = KFold(n_splits=5, shuffle=True, random_state=42)
         all_selected_features = []
 
         for outer_train_idx, outer_val_idx in outer_cv.split(X_trainval, y_trainval):
             X_outer_train, X_outer_val = X_trainval.iloc[outer_train_idx], X_trainval.iloc[outer_val_idx]
             y_outer_train, y_outer_val = y_trainval.iloc[outer_train_idx], y_trainval.iloc[outer_val_idx]
 
-            inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+            inner_cv = KFold(n_splits=3, shuffle=True, random_state=42)
             feature_scores = Counter()
 
             for inner_train_idx, inner_val_idx in inner_cv.split(X_outer_train, y_outer_train):
@@ -243,10 +249,19 @@ class DimensionsReductor:
                 y_inner_train, y_inner_val = y_outer_train.iloc[inner_train_idx], y_outer_train.iloc[inner_val_idx]
 
                 # Przykładowa procedura oceny cech — wybieramy top 10 według ważności z RandomForest
-                #model = RandomForestClassifier(random_state=42)
-                model.fit(X_inner_train, y_inner_train)
-                importances = model.feature_importances_
-                top_features = X_inner_train.columns[np.argsort(importances)[-10:]]
+                clf = svm.SVR()
+                model = RandomizedSearchCV(clf, param_distributions = param_grid, n_iter=10, cv=5) 
+                model.fit(X_inner_train, y_inner_train[feature].values.ravel())
+                #importances = model.feature_importances_
+                result = permutation_importance(
+                model.best_estimator_,
+                X_inner_val,
+                y_inner_val,
+                scoring='neg_mean_absolute_error',
+                n_repeats=5,
+                random_state=42
+            )
+                top_features = X_inner_train.columns[np.argsort(result.importances_mean)[-10:]]
 
                 feature_scores.update(top_features)
 
