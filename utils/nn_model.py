@@ -15,16 +15,18 @@ class NeuralNetwork(nn.Module):
         self.dropout = nn.Dropout(0.4)
         self.layer_3 = nn.Linear(hidden_dim, hidden_dim//2)
         nn.init.kaiming_uniform_(self.layer_3.weight, nonlinearity="relu")
-        self.layer_4 = nn.Linear(hidden_dim//2, hidden_dim//4)
-        nn.init.kaiming_uniform_(self.layer_4.weight, nonlinearity="relu")
-        self.output_layer = nn.Linear(hidden_dim//4, output_dim)
+        self.batch_norm = torch.nn.BatchNorm1d(hidden_dim//2)
+        #self.layer_4 = nn.Linear(hidden_dim//2, hidden_dim//4)
+        #nn.init.kaiming_uniform_(self.layer_4.weight, nonlinearity="relu")
+        self.output_layer = nn.Linear(hidden_dim//2, output_dim)
        
     def forward(self, x):
         x = torch.nn.functional.relu(self.layer_1(x))
         x = torch.nn.functional.relu(self.layer_2(x))
         x = self.dropout(x)
         x = torch.nn.functional.relu(self.layer_3(x))
-        x = torch.nn.functional.relu(self.layer_4(x))
+        x = self.batch_norm(x)
+        #x = torch.nn.functional.relu(self.layer_4(x))
         x = torch.nn.functional.sigmoid(self.output_layer(x))
 
         return x
