@@ -17,7 +17,7 @@ def main(args):
 
     mses, rmses, maes, count_outliers_lower, count_outliers_upper = [], [], [], [], []
     
-    loss_fn = nn.MSELoss()
+    loss_fn = nn.L1Loss()
     global_config, model_config = preprocessor.load_model_config(args.model_name, args.config_file)
 
     model_path=f'models/{args.atlas}/{args.model_name}_{args.data_type}_valid_{args.valid}'
@@ -28,8 +28,8 @@ def main(args):
     
 
     is_big = 'big' in args.data_type
-    id_file = Path(f"data/leave_out_identifiers{'_big' if is_big else ''}.csv")
-    leave_out_csv = Path(f"data/{args.data_type}_norm_confirmed_normal/leave_out{'_big' if is_big else ''}.csv")
+    id_file = Path(f"data/preprocessed_atlas/leave_out_identifiers{'_big' if is_big else ''}.csv")
+    leave_out_csv = Path(f"data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out{'_big' if is_big else ''}.csv")
 
     if id_file.exists():
         leave_ids = pd.read_csv(id_file)['identifier']
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     parser.add_argument("--atlas", nargs="?", default="ASEG", help="atlas", type=str)
     parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
-    parser.add_argument("--shap", nargs="?", default=1, help="calculate shap values", type=bool)
+    parser.add_argument("--shap", nargs="?", default=0, help="calculate shap values", type=bool)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)
