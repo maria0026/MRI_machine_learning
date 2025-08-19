@@ -60,7 +60,7 @@ def main(args):
                 z = joblib.load(f'models/{args.model_name}_z_train_nr_{i}.pkl')
             else:
                 z=None
-            mse, rmse, mae, results_df, feature_importance = tester.svm_regression_model(X_test, y_test, clf, z=z, feature=feature, comp=False)
+            mse, rmse, mae, results_df, feature_importance, shap_values = tester.svm_regression_model(X_test, y_test, clf, z=z, feature=feature, comp=False)
            
 
         elif args.model_name=='fnn':
@@ -120,8 +120,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age preidction - testing on holdout set with PCA")
-    parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
-    parser.add_argument("--data_type", nargs="?", default="all_big", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
+    parser.add_argument("--model_name", nargs="?", default="fnn", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
     parser.add_argument("--components_nr", nargs="?", default=35, help="Number of components for principal component analysis", type=int)
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)

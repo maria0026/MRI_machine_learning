@@ -149,7 +149,7 @@ def main(args):
             else:
                 z=None
                 z_quantiles=None
-            mse, rmse, mae, results_df, feature_importance = tester.svm_regression_model(X_outer_val, y_outer_val, clf, z=z, feature=feature, comp = False, importance = True, shap_bool=args.shap)
+            mse, rmse, mae, results_df, feature_importance, shap_values = tester.svm_regression_model(X_outer_val, y_outer_val, clf, z=z, feature=feature, comp = False, importance = True, shap_bool=args.shap)
             identifiers_lower, identifiers_upper, sex_lower, sex_upper = tester.svm_regression_model_quantiles(results_df, y_outer_val, z_quantiles=z_quantiles, feature=feature, plot=args.plot, first_quantile=args.first_quantile, last_quantile=args.last_quantile)
             joblib.dump(clf, f'{model_path}/model_train_nr_{i}.pkl')
             joblib.dump(z, f'{model_path}/z_train_nr_{i}.pkl')

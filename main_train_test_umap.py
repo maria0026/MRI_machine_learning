@@ -151,7 +151,7 @@ def main(args):
                 z=None
                 z_quantiles=None
     
-            mse, rmse, mae, results_df, feature_importance = tester.svm_regression_model(X_test, y_test, clf, z=z, feature=feature)
+            mse, rmse, mae, results_df, feature_importance, shap_values = tester.svm_regression_model(X_test, y_test, clf, z=z, feature=feature)
             importance_df = pd.concat([feature_importance.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
             identifiers_lower, identifiers_upper, sex_lower, sex_upper = tester.svm_regression_model_quantiles(results_df, y_test, z_quantiles=z_quantiles, feature=feature, plot=args.plot, first_quantile=args.first_quantile, last_quantile=args.last_quantile)
             joblib.dump(clf, f'{model_path}/model_train_nr_{i}.pkl')

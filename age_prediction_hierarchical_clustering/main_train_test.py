@@ -107,7 +107,7 @@ def main(args):
                 z=None
                 z_quantiles=None
     
-            mse, rmse, mae, results_df, feature_importance = tester.svm_regression_model(X_test_selected, y_test, clf, z=z, feature=feature)
+            mse, rmse, mae, results_df, feature_importance, shap_values = tester.svm_regression_model(X_test_selected, y_test, clf, z=z, feature=feature)
             joblib.dump(clf, f'{model_path}/hierachical_model_train_nr_{i}.pkl')
             joblib.dump(z, f'{model_path}/hierachical_z_train_nr_{i}.pkl')
             joblib.dump(z_quantiles, f'{model_path}/hierachical_z_quantiles_train_nr_{i}.pkl')
