@@ -121,22 +121,26 @@ class ModelTester:
             df_fi = df_fi.round(4)
 
             if shap_bool:
+                background = shap.sample(X_test, 100, random_state=42) 
                 explainer = shap.KernelExplainer(
                     lambda x: clf.predict(pd.DataFrame(x, columns=X_test.columns)), 
-                    X_test
+                    background
                 )
-                shap_values = explainer.shap_values(X_test, l1_reg=0)
+                shap_values = explainer.shap_values(X_test, l1_reg="num_features(20)")
+                '''
                 np.save("shap_values_all_ASEG.npy", shap_values)
                 shap.summary_plot(shap_values, X_test, max_display=len(X_test.columns))
                 plt.savefig("shap_summary_plot_summary.png", bbox_inches="tight")
                 shap.plots.beeswarm(shap.Explanation(values=shap_values, data=X_test, feature_names=X_test.columns))
                 plt.savefig("shap_summary_plot_beeswarm.png", bbox_inches="tight")
 
-
+                '''
+            else:
+                shap_values = []
         else:
             df_fi = []
 
-        return mse, rmse, mae, results_df, df_fi
+        return mse, rmse, mae, results_df, df_fi, shap_values
 
     def svm_regression_model_quantiles(self, results_df, y_test, z_quantiles=None, feature=None, plot=False, first_quantile=None, last_quantile=None):
         y_pred=results_df['Predicted']
