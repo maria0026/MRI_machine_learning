@@ -46,13 +46,13 @@ def main(args):
 
 
         elif args.model_name=="svm":
-            clf= joblib.load( f'{model_path}/model_train_nr_{i}.pkl')
+            clf = joblib.load( f'{model_path}/model_train_nr_{i}.pkl')
             if args.valid==1:
-                z= joblib.load(f'models/{args.model_name}_z_train_nr_{i}.pkl')
+                z = joblib.load(f'{model_path}/z_train_nr_{i}.pkl')
             else:
-                z=None
-            mse, rmse, mae, results_df, feature_importance = tester.svm_regression_model(X_test, y_test, clf, z=z, feature=feature, comp=False, importance=True, shap_bool=args.shap)
-           
+                z = None
+            mse, rmse, mae, results_df, feature_importance, shap_values = tester.svm_regression_model(X_test, y_test, clf, z=z, feature=feature, comp=False, importance=True, shap_bool=args.shap)
+            np.save(f'{model_path}/{args.model_name}_shap_values_{i}.npy', shap_values)
 
         elif args.model_name=='fnn':
             y_test[feature] = y_test[feature]/100
