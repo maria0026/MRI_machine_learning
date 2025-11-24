@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.utils.fixes import parse_version, sp_version
 
 def svm_regression_model(X_val, y_val, clf, feature, plot=False):
-
+    X_val = X_val.select_dtypes(include='number')
     y_pred = clf.predict(X_val)
     y_test_flat = y_val[feature].values.ravel() 
     

@@ -78,7 +78,7 @@ class ModelTester:
 
     def svm_regression_model(self, X_test, y_test, clf, z=None, feature=None, comp=True, importance=True, shap_bool=False):
         #print('Best hyperparameters:',  clf.best_params_)
-
+        X_test = X_test.select_dtypes(include='number')
         y_pred = clf.predict(X_test)
         #detrend the results
         if z is not None:

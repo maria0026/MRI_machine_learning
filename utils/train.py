@@ -49,15 +49,12 @@ class ModelTrainer:
         return grid
 
     def svm_regression_model(self, X_train, y_train, param_grid,feature):
+        X_train = X_train.select_dtypes(include='number')
         clf = svm.SVR()
         grid = RandomizedSearchCV(clf, param_distributions= param_grid, n_iter=10, cv=5) 
         grid.fit(X_train, y_train[feature].values.ravel())
 
         return grid
-    
-    def cost_function(self, X, y):
-
-        loss = 0
 
 
     def feed_forward_neural_network(self, train_dataloader, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs, momentum=0, weight_decay=0):
@@ -79,7 +76,10 @@ class ModelTrainer:
                 y = y.view(-1, 1)
                 #mean_mae = (torch.sum(abs(pred - y))*100) / len(pred)
                 #print(mean_mae)
-                loss = loss_fn(pred, y)
+                loss_fn_k = torch.nn.KLDivLoss(reduction='batchmean', log_target=True)
+                pred = torch.nn.functional.log_softmax(pred)
+                y = torch.nn.functional.log_softmax(y)
+                loss = loss_fn_k(pred, y)
                 
 
                 mae_batch = torch.mean(torch.abs(pred - y)) * 100
@@ -103,7 +103,7 @@ class ModelTrainer:
                         mae_roznica = torch.abs(mae_bin - mae_batch)
 
                     #print(f"Przedział {low}-{high - 1}: {count.item()} przykładów")
-                        loss += 0.1 * mae_roznica/100
+                        #loss += 0.2 * mae_roznica/100
 
                 batch_losses.append(loss.item())    
                 loss.backward()
