@@ -24,21 +24,28 @@ def main(args):
     if not os.path.exists(model_path):
         os.makedirs(model_path)
 
-    df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/all_concatenated.csv', sep='\t')
+    df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/all_concatenated_{args.hearing_loss}.csv', sep=None, engine='python', dtype={'identifier': str})
+    cols_to_check = df.columns.difference(['L_HEARING_TYPE', 'P_HEARING_TYPE'])
+    df = df.dropna(subset=cols_to_check).copy()
+    df = preprocessor.filter_age(df, args.label_names)
+    df = preprocessor.filter_zeros(df, 10)
+    df = df[df['IF_FIRST'] == 1]
     
 
     is_big = 'big' in args.data_type
-    id_file = Path(f"data/preprocessed_atlas/leave_out_identifiers{'_big' if is_big else ''}.csv")
-    leave_out_csv = Path(f"data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out{'_big' if is_big else ''}.csv")
+    id_file = Path(f"data/preprocessed_atlas/leave_out_identifiers{'_big' if is_big else ''}_{args.hearing_loss}.csv")
+    leave_out_csv = Path(f"data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out{'_big' if is_big else ''}_{args.hearing_loss}.csv")
+
 
     if id_file.exists():
-        leave_ids = pd.read_csv(id_file)['identifier']
+        leave_ids = pd.read_csv(id_file, dtype={'identifier': str})['identifier'].astype(str)
+        df['identifier'] = df['identifier'].astype(str)
         df_leave = df[df['identifier'].isin(leave_ids)]
         df = df[~df['identifier'].isin(leave_ids)]
     else:
         df, df_leave = train_test_split(df, test_size=0.15, random_state=42)
         df_leave['identifier'].to_csv(id_file, index=False)
-    df_leave.to_csv(leave_out_csv, sep='\t', index=False)
+    df_leave.to_csv(leave_out_csv, index=False)
 
 
     identifier=df['identifier']
@@ -46,7 +53,7 @@ def main(args):
     input_dim = df.shape[1]-1
 
     if args.test_data_type!="None":
-        df_test = pd.read_csv(f'data/{args.test_data_type}_norm_confirmed/all_concatenated.csv', sep='\t')
+        df_test = pd.read_csv(f'data/{args.test_data_type}_norm_confirmed/all_concatenated_{args.hearing_loss}.csv', sep='\t')
         identifier=df_test['identifier']
         df_test = df_test.drop(columns=args.columns_to_drop)
 
@@ -127,14 +134,14 @@ def main(args):
             os.makedirs(results_directory)
 
         if i==0:
-            results_df.to_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
+            results_df.to_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}_{args.hearing_loss}.csv', sep='\t', index=False)
             
             if args.model_name=='svm':
-                identifiers.to_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_identifiers_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
+                identifiers.to_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_identifiers_{args.model_name}_valid_{args.valid}_{args.hearing_loss}.csv', sep='\t', index=False)
         else:
-            results_df_old = pd.read_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t')
+            results_df_old = pd.read_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}_{args.hearing_loss}.csv', sep='\t')
             results_df = pd.concat([results_df_old.reset_index(drop = True), results_df.reset_index(drop = True)], axis = 1)
-            results_df.to_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
+            results_df.to_csv(f'{results_directory}/train_{args.data_type}_test_{args.test_data_type}_regression_results_{args.model_name}_valid_{args.valid}_{args.hearing_loss}.csv', sep='\t', index=False)
 
 
         mses.append(mse)
@@ -160,7 +167,8 @@ if __name__ == "__main__":
     parser.add_argument("--config_file", nargs="?", default="config/models.yaml", help="Configuration file", type=str)
     parser.add_argument("--atlas", nargs="?", default="a2009", help="atlas", type=str)
     parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
-    parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
+    parser.add_argument("--hearing_loss", nargs="?", default="prawidlowy", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--valid", nargs="?", default=1, help="create valid set: 0/1", type=bool)
     parser.add_argument("--shap", nargs="?", default=0, help="calculate shap values", type=bool)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
@@ -170,7 +178,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_most_important_features", nargs="?", default=20, help="Choose the number of extracting features that load into components")
     parser.add_argument("--results_directory", nargs="?", default="results", help="Directory for results", type=str)
     parser.add_argument("--label_names", nargs="?", default=["age"], help="Predicted parameters, list", type=list)
-    parser.add_argument("--column_to_copy", nargs="?", default=['male'], help="Columns to copy", type=list)
+    parser.add_argument("--column_to_copy", nargs="?", default=['male', 'DATA_BADANIA', 'IF_FIRST'], help="Columns to copy", type=list)
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)
     parser.add_argument("--first_quantile", nargs="?", default=0.01, help="First quantile for svm regression", type=float)
     parser.add_argument("--last_quantile", nargs="?", default=0.99, help="Last quantile for svm regression", type=float)
