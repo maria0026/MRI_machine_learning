@@ -20,3 +20,5 @@ plots/age_distribution_by_sex.jpg
 *.fish
 /catboost_info
 kolumny.txt
+shap_values_all_ASEG.npy
+*.npy
