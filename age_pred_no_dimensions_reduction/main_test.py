@@ -4,10 +4,11 @@ import joblib
 from utils import test
 import torch
 import numpy as np
-from utils import nn_model
+from utils import nn_model, prepare_dataset
 
 def main(args):
 
+    preprocessor = prepare_dataset.DatasetPreprocessor()
     tester = test.ModelTester()
     mses, rmses, maes= [], [], []
 
@@ -16,9 +17,20 @@ def main(args):
     results_directory=f'{args.results_directory}/{args.atlas}'
 
     if 'big' in args.data_type:
-        df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out_big.csv', sep='\t')
+        df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out_big.csv', sep=None, engine='python', dtype={'identifier': str})
     else:
-        df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out.csv', sep='\t')
+        df = pd.read_csv(f'data/preprocessed_atlas/{args.data_type}_norm_confirmed_{args.atlas}/leave_out_{args.hearing_loss}.csv', sep=None, engine='python', dtype={'identifier': str})
+
+    cols_to_check = df.columns.difference(['L_HEARING_TYPE', 'P_HEARING_TYPE'])
+    df = df.dropna(subset=cols_to_check).copy()
+    df = preprocessor.filter_age(df, args.label_names)
+    df = preprocessor.filter_zeros(df, 10)
+
+    df = df[df['IF_FIRST'] == 1]
+    #df['DATA_BADANIA_MRI'] = pd.to_datetime(df['DATA_BADANIA_MRI'], dayfirst=True)
+    df['DATA_BADANIA_MRI'] = pd.to_datetime(df['DATA_BADANIA_MRI'], format='%Y-%m-%d')
+    df['DATA_BADANIA'] = pd.to_datetime(df['DATA_BADANIA'], dayfirst=True, errors='coerce')
+    df = df[df['DATA_BADANIA_MRI'] > df['DATA_BADANIA']]
     identifier=df['identifier']
     df = df.drop(columns=args.columns_to_drop, errors='ignore')
     input_dim = df.shape[1]-1
@@ -26,7 +38,9 @@ def main(args):
     for i in range(0, args.nr_of_train):
         X_test=df.drop(columns=args.label_names)
         y_test=df[args.label_names]
-        X_test_to_scale = X_test.drop(columns=args.column_to_copy)
+        numeric_cols = X_test.select_dtypes(include='number').columns
+        cols_to_scale = numeric_cols.difference(args.column_to_copy)
+        X_test_to_scale = X_test[cols_to_scale]
         print("Model path:", model_path)
         scaler = joblib.load(f'{model_path}/scaler_train_nr_{i}.pkl')
         X_test_scaled = scaler.transform(X_test_to_scale)
@@ -68,17 +82,17 @@ def main(args):
 
 
         if i==0:
-            results_df.to_csv(f'{results_directory}/test_{args.data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
+            results_df.to_csv(f'{results_directory}/test_{args.data_type}_regression_results_{args.model_name}_valid_{args.valid}_{args.hearing_loss}.csv', sep='\t', index=False)
             if args.model_name=='svm':
-                feature_importance.to_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t')
+                feature_importance.to_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}_{args.hearing_loss}.csv', sep='\t')
 
         else:
-            results_df_old = pd.read_csv(f'{results_directory}/test_{args.data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t')
+            results_df_old = pd.read_csv(f'{results_directory}/test_{args.data_type}_regression_results_{args.model_name}_valid_{args.valid}_{args.hearing_loss}.csv', sep='\t')
             results_df = pd.concat([results_df_old, results_df], axis = 1)
-            results_df.to_csv(f'{results_directory}/test_{args.data_type}_regression_results_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=False)
+            results_df.to_csv(f'{results_directory}/test_{args.data_type}_regression_results_{args.model_name}_valid_{args.valid}_{args.hearing_loss}.csv', sep='\t', index=False)
             if args.model_name=='svm':
                 feature_importance.columns=[f'{col}_{i}' for col in feature_importance.columns]
-                importance_df_old = pd.read_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index_col=0)
+                importance_df_old = pd.read_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}_{args.hearing_loss}.csv', sep='\t', index_col=0)
                 importance_df = pd.concat([importance_df_old, feature_importance], axis = 1)
 
                 if i==args.nr_of_train-1:
@@ -90,7 +104,7 @@ def main(args):
                     df_mean_std.sort_values(by='mean', ascending=False, inplace=True)
                     importance_df=df_mean_std
 
-                importance_df.to_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}.csv', sep='\t', index=True)
+                importance_df.to_csv(f'{results_directory}/test_{args.data_type}_importance_age_{args.model_name}_valid_{args.valid}_{args.hearing_loss}.csv', sep='\t', index=True)
 
             print("MAE:", mae)
 
@@ -111,11 +125,12 @@ if __name__ == "__main__":
     parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--atlas", nargs="?", default="a2009", help="Atlas used for feature extraction", type=str)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
-    parser.add_argument("--valid", nargs="?", default=0, help="Create valid set and detrend: 0 (no) /1 (yes)", type=bool)
-    parser.add_argument("--shap", nargs="?", default=1, help="calculate shap values", type=bool)
+    parser.add_argument("--hearing_loss", nargs="?", default="gleboki", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--valid", nargs="?", default=1, help="Create valid set and detrend: 0 (no) /1 (yes)", type=bool)
+    parser.add_argument("--shap", nargs="?", default=0, help="calculate shap values", type=bool)
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)
     parser.add_argument("--label_names", nargs="?", default=["age"], help="Predicted parameters, list", type=list)
-    parser.add_argument("--column_to_copy", nargs="?", default=['male'], help="Columns to copy", type=list)
+    parser.add_argument("--column_to_copy", nargs="?", default=['male', 'DATA_BADANIA', 'IF_FIRST'], help="Columns to copy", type=list)
     parser.add_argument("--batch_size", nargs="?", default=64, help="Batch size", type=int)
     parser.add_argument("--nr_of_train", nargs="?", default=5, help="Number of train dataset", type=int)
     parser.add_argument("--results_directory", nargs="?", default="results", help="Directory for results", type=str)
