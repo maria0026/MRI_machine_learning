@@ -49,8 +49,15 @@ class DatasetPreprocessor:
         scaler = StandardScaler()
         #scaler = RobustScaler()
 
-        X_train_to_scale = X_train.drop(columns=column_to_copy)
-        X_test_to_scale = X_test.drop(columns=column_to_copy)
+        numeric_cols = X_train.select_dtypes(include='number').columns
+
+        cols_to_scale = numeric_cols.difference(column_to_copy)
+        
+        X_train_to_scale = X_train[cols_to_scale]
+        X_test_to_scale  = X_test[cols_to_scale]
+
+        #X_train_to_scale = X_train.drop(columns=column_to_copy)
+        #X_test_to_scale = X_test.drop(columns=column_to_copy)
 
         X_train_scaled = scaler.fit_transform(X_train_to_scale)
         X_test_scaled = scaler.transform(X_test_to_scale)
@@ -62,7 +69,7 @@ class DatasetPreprocessor:
         X_test = pd.concat([X_test_scaled_df, X_test[column_to_copy]], axis=1)
 
         if X_val is not None:
-            X_val_to_scale = X_val.drop(columns=column_to_copy)
+            X_val_to_scale = X_val[cols_to_scale]
             X_val_scaled = scaler.transform(X_val_to_scale)
             X_val_scaled_df = pd.DataFrame(X_val_scaled, columns=X_val_to_scale.columns, index=X_val_to_scale.index)
             X_val = pd.concat([X_val_scaled_df, X_val[column_to_copy]], axis=1)
@@ -118,3 +125,20 @@ class DatasetPreprocessor:
             else:
                 dist[key] = val
         return dist
+
+
+    def filter_age(self, data_mri, age_label_name):
+        age_label_name=age_label_name[0]
+        data_mri[age_label_name] = pd.to_numeric(data_mri[age_label_name], errors='coerce')
+        df = data_mri[(data_mri[age_label_name] >= 3) & (data_mri[age_label_name] <= 100)]
+
+        return df
+
+
+    def filter_zeros(self, data_mri, filtering_threshold):
+        zero_ratio = (data_mri == 0).sum() / len(data_mri)
+        nan_ratio = data_mri.isna().sum() / len(data_mri)
+        cols_to_keep = zero_ratio[(zero_ratio < filtering_threshold) & (nan_ratio < filtering_threshold)].index
+        print(f"Kept {len(cols_to_keep)} columns out of {len(data_mri.columns)} after filtering zeros and NaNs")
+        data_mri = data_mri[cols_to_keep].copy()
+        return data_mri
