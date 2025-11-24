@@ -59,8 +59,9 @@ def main(args):
         elif args.model_name=="svm":
             X_test = X_test[features]
             print(X_test.columns)
-            y_shuffled = np.random.permutation(y_test['age'])
-            print("test", mean_absolute_error(y_test['age'], y_shuffled))
+            print(y_test.columns)
+            #y_shuffled = np.random.permutation(y_test['age'])
+            #print("test", mean_absolute_error(y_test['age'], y_shuffled))
             clf = joblib.load( f'{model_path}/hierachical_model_train_nr_{i}.pkl')
             if args.valid==1:
                 z= joblib.load(f'{model_path}/hierachical_z_train_nr_{i}.pkl')
