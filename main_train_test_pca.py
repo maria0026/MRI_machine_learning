@@ -8,6 +8,7 @@ from utils import dimensions_reduction, prepare_dataset, train, valid, test, nn_
 import os
 import torch
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 def main(args):
 
@@ -16,6 +17,7 @@ def main(args):
     trainer = train.ModelTrainer()
     tester = test.ModelTester()
     mses, rmses, maes, count_outliers_lower, count_outliers_upper = [], [], [], [], []
+    PCA_ratios = []
 
     global_config, model_config = preprocessor.load_model_config(args.model_name, args.config_file)
 
@@ -83,10 +85,15 @@ def main(args):
         pca_mri, train_pca, val_pca, test_pca, importance_df = reductor.principal_component_analysis(X_train, X_test, args.components_nr, args.n_most_important_features, X_val=X_val, validation=args.valid)
         components_nr = train_pca.shape[1]
         input_dim = components_nr + 1
+        explained_variance_ratio = pca_mri.explained_variance_ratio_
+        PCA_ratios.append(explained_variance_ratio)
         joblib.dump(pca_mri, f'{model_path}_pca_mri_train_nr_{i}.pkl')
-        #explained_variance_ratio = pca_mri.explained_variance_ratio_
-        #formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
+        explained_variance_ratio = pca_mri.explained_variance_ratio_
+        formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
         #print('Explained variability per principal component: {}'.format(formatted_explained_variance))
+        #total explaned variance
+        total_explained_variance = sum(explained_variance_ratio)
+        print('Total explained variability by {} components: {:.10f}'.format(components_nr, total_explained_variance))
 
         train_principal_Df = pd.DataFrame(data = train_pca
                     , columns = [str(i) for i in range(1,train_pca.shape[1]+1)], index=X_train.index)
@@ -235,6 +242,26 @@ def main(args):
     count_outliers_upper = np.array([x if x is not None else np.nan for x in count_outliers_upper])
     print("Outliers lower", np.nanmean(count_outliers_lower)/y_test.shape[0], np.nanstd(count_outliers_lower)/y_test.shape[0])
     print("Outliers upper", np.nanmean(count_outliers_upper)/y_test.shape[0], np.nanstd(count_outliers_upper)/y_test.shape[0])
+
+    PC_values = np.arange(pca_mri.n_components_) + 1
+    pca_ratios = np.array(PCA_ratios)  
+    mean_ratio = pca_ratios.mean(axis=0)
+    std_ratio = pca_ratios.std(axis=0)
+    plt.errorbar(
+        PC_values,
+        mean_ratio,
+        yerr=std_ratio,
+        fmt='o-',
+        linewidth=2,
+        capsize=5
+    )
+    plt.fill_between(PC_values, mean_ratio - std_ratio, mean_ratio + std_ratio, color='blue', alpha=0.2)
+    #plt.title('Scree Plot')
+    plt.xlabel('Komponent PCA', fontsize=12)
+    plt.ylabel('Wytłumaczona Wariancja', fontsize=12)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.show()
 
 
 if __name__ == "__main__":
