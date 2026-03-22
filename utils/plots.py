@@ -231,7 +231,7 @@ def distribution(train_pca, test_pca):
     plt.show()
 
 
-def age_prediction_function(df, model, data_type, valid=False, test=''):
+def age_prediction_function(df, model, data_type, valid=False, test='', language='en'):
     # Tworzenie figury z odpowiednim rozmiarem
     fig, axs = plt.subplots(2, 3, figsize=(15, 7))
     #fig.suptitle(f'Chronological vs Predicted Age by {model}', fontsize=16)
@@ -244,9 +244,15 @@ def age_prediction_function(df, model, data_type, valid=False, test=''):
     for i in range(len(list_actual)):
         ax = axs[i // 3, i % 3]  # Pobieranie odpowiedniego podwykresu (2x3 layout)
         ax.plot(df[list_actual[i]], df[list_predicted[i]], 'o', alpha=0.3)
-        ax.set_xlabel('Chronological Age (years)', fontsize=16)
-        ax.set_ylabel('Predicted Age (years)', fontsize=16)
-        ax.set_title(f'Training {i + 1}', fontsize=14)
+        if language=='en':
+            ax.set_xlabel('Chronological Age (years)', fontsize=16)
+            ax.set_ylabel('Predicted Age (years)', fontsize=16)
+            ax.set_title(f'Training {i + 1}', fontsize=14)
+
+        elif language=='pl':
+            ax.set_xlabel('Wiek chronologiczny (lata)', fontsize=16)
+            ax.set_ylabel('Wiek przewidywany (lata)', fontsize=16)
+            ax.set_title(f'Trening {i + 1}', fontsize=14)
         ax.tick_params(axis='both', labelsize=15)
 
 
@@ -269,8 +275,13 @@ def age_prediction_function(df, model, data_type, valid=False, test=''):
     #add line y=x
     ax.plot(unique_actual, unique_actual, "b--", color='gray', label='y=x')
     ax.legend()
-    ax.set_xlabel('Chronological Age (years)', fontsize=16)
-    ax.set_ylabel('Predicted Age (years)', fontsize=16)
+    if language=='en':
+        ax.set_xlabel('Chronological Age (years)', fontsize=16)
+        ax.set_ylabel('Predicted Age (years)', fontsize=16)
+        #ax.set_title(f'All trains by {model}')
+    elif language=='pl':
+        ax.set_xlabel('Wiek chronologiczny (lata)', fontsize=16)
+        ax.set_ylabel('Wiek przewidywany (lata)', fontsize=16)
     ax.tick_params(axis='both', labelsize=15)
     #ax.set_title(f'All trains by {model}')
 
@@ -282,7 +293,7 @@ def age_prediction_function(df, model, data_type, valid=False, test=''):
         plt.savefig(f'plots/{data_type}_{model}_plot_{test}.png')
     plt.show()
 
-def age_prediction_gap(df, model, data_type, valid=False, test=''):
+def age_prediction_gap(df, model, data_type, valid=False, test='', language='en'):
     # Tworzenie figury z odpowiednim rozmiarem
     fig, axs = plt.subplots(2, 3, figsize=(15, 7))
     #fig.suptitle(f'Gap in prediction by {model}', fontsize=16)
@@ -295,9 +306,14 @@ def age_prediction_gap(df, model, data_type, valid=False, test=''):
     for i in range(len(list_actual)):
         ax = axs[i // 3, i % 3]  # Pobieranie odpowiedniego podwykresu (2x3 layout)
         ax.plot(df[list_actual[i]], df[list_predicted[i]]-df[list_actual[i]],  'o', alpha=0.3, color='orange')
-        ax.set_xlabel('Chronological Age (years)', fontsize=16)
-        ax.set_ylabel('Age gap (years)', fontsize=16)
-        ax.set_title(f'Training {i + 1}', fontsize=14)
+        if language=='en':
+            ax.set_xlabel('Chronological Age (years)', fontsize=16)
+            ax.set_ylabel('Age gap (years)', fontsize=16)
+            ax.set_title(f'Training {i + 1}', fontsize=14)
+        elif language=='pl':
+            ax.set_xlabel('Wiek chronologiczny (lata)', fontsize=16)
+            ax.set_ylabel('Różnica wieku (lata)', fontsize=16)
+            ax.set_title(f'Trening {i + 1}', fontsize=14)
         ax.tick_params(axis='both', labelsize=15)
 
 
@@ -321,8 +337,13 @@ def age_prediction_gap(df, model, data_type, valid=False, test=''):
     ax.plot(unique_actual, p(unique_actual), "r--", label='y=%.2fx² + %.2fx + %.2f' % (z[0], z[1], z[2]))
 
     ax.legend()
-    ax.set_xlabel('Chronological Age (years)', fontsize=16)
-    ax.set_ylabel('Age gap (years)', fontsize=16)
+    if language=='en':
+        ax.set_xlabel('Chronological Age (years)', fontsize=16)
+        ax.set_ylabel('Age gap (years)', fontsize=16)
+        #ax.set_title(f'Chronological vs Predicted Age by {model}')
+    elif language=='pl':
+        ax.set_xlabel('Wiek chronologiczny (lata)', fontsize=16)
+        ax.set_ylabel('Różnica wieku (lata)', fontsize=16)
     ax.tick_params(axis='both', labelsize=15)
     #ax.set_title(f'Chronological vs Predicted Age by {model}')
 
