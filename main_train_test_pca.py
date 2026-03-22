@@ -29,7 +29,8 @@ def main(args):
     if not os.path.exists(model_path):
         os.makedirs(model_path)
     
-    df = pd.read_csv(f'data/{args.data_type}_norm_confirmed/all_concatenated.csv', sep='\t')
+    df = pd.read_csv(f'data/{args.data_type}_norm_confirmed/all_concatenated.csv', sep=None, engine='python')
+    print(df)
     df = df[(df['age'] <= 100) & (df['age'] >= 0.5)]
 
     print("Max age:", df['age'].max())
@@ -67,6 +68,16 @@ def main(args):
                 df_test = preprocessor.divide_by_total_volume(df_test)
 
         X_train, X_val, X_test, y_train, y_val, y_test = preprocessor.split_dataset(df, args.label_names, test_size=args.test_size, valid=args.valid)
+        if args.valid:
+            val_identifier = X_val['identifier']
+
+        #drop identifier
+        X_train = X_train.drop(columns='identifier')
+        X_test =  X_test.drop(columns='identifier')
+
+        if args.valid:
+            X_val = X_val.drop(columns='identifier')
+
 
         if args.test_data_type!="None":
             X_test = df_test.drop(columns=args.label_names)
@@ -80,6 +91,8 @@ def main(args):
         X_train, X_val, X_test, scaler = preprocessor.standardize_data(X_train, X_val, X_test, column_to_copy=args.column_to_copy)
         joblib.dump(scaler, f'{model_path}/scaler_train_nr_{i}.pkl')
         y_test['identifier'] = identifier
+        if args.valid:
+            y_val['identifier'] = val_identifier
         
         #PCA
         pca_mri, train_pca, val_pca, test_pca, importance_df = reductor.principal_component_analysis(X_train, X_test, args.components_nr, args.n_most_important_features, X_val=X_val, validation=args.valid)
@@ -157,7 +170,7 @@ def main(args):
             
             clf = trainer.svm_regression_model(X_train, y_train, svm_param_dist, feature)
             if args.valid:
-                z, z_quantiles= valid.svm_regression_model(X_val, y_val, clf, feature, plot=args.plot)
+                z, z_quantiles = valid.svm_regression_model(X_val, y_val, clf, feature, plot=args.plot)
             else:
                 z=None
                 z_quantiles=None
@@ -182,7 +195,11 @@ def main(args):
             y_test[feature] = y_test[feature]/100
             train_dataloader = nn_data.load_fnn_data(X_train, y_train, model_config['batch_size'], feature)
             model = trainer.feed_forward_neural_network(train_dataloader, input_dim, model_config['hidden_dim'], model_config['output_dim'], model_config['learning_rate'], loss_fn, model_config['num_epochs'],  model_config['momentum'],  model_config['weight_decay'])
-            mse, rmse, mae, results_df, feature_importance = tester.neural_network_regression(X_test, y_test, model_config['batch_size'], model, feature)
+            if args.valid:
+                z = valid.feed_forward_neural_network(X_val, y_val, model, model_config['batch_size'], feature)
+            else:
+                z=None
+            mse, rmse, mae, results_df, feature_importance = tester.neural_network_regression(X_test, y_test, model_config['batch_size'], model, feature, z=z)
             #if importance_df != None:
             importance_df = pd.concat([feature_importance.reset_index(drop=True), importance_df.reset_index(drop=True)], axis=1)
             torch.save(model.state_dict(), f'{model_path}/model_train_nr_{i}.pth')
@@ -231,6 +248,7 @@ def main(args):
         mses.append(mse)
         rmses.append(rmse)
         maes.append(mae)
+        print('mae', mae)
 
     mae_mean = round(np.mean(maes), 2)
     mae_std = round(np.std(maes), 2)
@@ -247,6 +265,7 @@ def main(args):
     pca_ratios = np.array(PCA_ratios)  
     mean_ratio = pca_ratios.mean(axis=0)
     std_ratio = pca_ratios.std(axis=0)
+    '''
     plt.errorbar(
         PC_values,
         mean_ratio,
@@ -262,24 +281,25 @@ def main(args):
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
     plt.show()
+    '''
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Parser for age preidction - testing on test set with PCA")
     parser.add_argument("--config_file", nargs="?", default="config/models.yaml", help="Configuration file", type=str)
-    parser.add_argument("--model_name", nargs="?", default="svm", help="Model name: forest/svm/fnn/rnn", type=str)
+    parser.add_argument("--model_name", nargs="?", default="fnn", help="Model name: forest/svm/fnn/rnn", type=str)
     parser.add_argument("--data_type", nargs="?", default="positive", help="Type of dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--test_size", nargs="?", default=0.2, help="Size of test dataset", type=float)
     parser.add_argument("--test_data_type", nargs="?", default="None", help="Type of test dataset based on norm_confirmed: positive/negative/all", type=str)
     parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
     parser.add_argument("--sex_subset", nargs="?", default="all", help="Choose the sex subset: all/female/male", type=str)
-    parser.add_argument("--division_by_total_volume", nargs="?", default=1, help="Divide volumetric data by Estimated_Total_Intracranial_Volume: 1/0", type=bool)
+    parser.add_argument("--division_by_total_volume", nargs="?", default=0, help="Divide volumetric data by Estimated_Total_Intracranial_Volume: 1/0", type=bool)
     parser.add_argument("--n_most_important_features", nargs="?", default=20, help="Choose the number of extracting features that load into components")
     parser.add_argument("--components_nr", nargs="?", default=35, help="Number of components for principal component analysis", type=int)
     parser.add_argument("--results_directory", nargs="?", default="results", help="Directory for results", type=str)
     parser.add_argument("--label_names", nargs="?", default=["age"], help="Predicted parameters, list", type=list)
     parser.add_argument("--column_to_copy", nargs="?", default=['male'], help="Columns to copy", type=list)
-    parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female'], help="Columns to drop", type=list)
+    parser.add_argument("--columns_to_drop", nargs="?", default=['norm_confirmed', 'sex', 'female','weight', 'hight'], help="Columns to drop", type=list)
     parser.add_argument("--first_quantile", nargs="?", default=0.01, help="First quantile for svm regression", type=float)
     parser.add_argument("--last_quantile", nargs="?", default=0.99, help="Last quantile for svm regression", type=float)
     parser.add_argument("--plot", nargs="?", default=0, help="Plot results", type=bool)
