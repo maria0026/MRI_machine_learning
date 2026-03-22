@@ -51,7 +51,7 @@ class ModelTrainer:
     def svm_regression_model(self, X_train, y_train, param_grid,feature):
         X_train = X_train.select_dtypes(include='number')
         clf = svm.SVR()
-        grid = RandomizedSearchCV(clf, param_distributions= param_grid, n_iter=10, cv=5) 
+        grid = RandomizedSearchCV(clf, param_distributions= param_grid, n_iter=30, cv=5) 
         grid.fit(X_train, y_train[feature].values.ravel())
 
         return grid
@@ -60,7 +60,7 @@ class ModelTrainer:
     def feed_forward_neural_network(self, train_dataloader, input_dim, hidden_dim, output_dim, learning_rate, loss_fn, num_epochs, momentum=0, weight_decay=0):
 
         model = nn_model.NeuralNetwork(input_dim, hidden_dim, output_dim)
-        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)    
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.002, weight_decay=weight_decay) #,lr=learning_rate, momentum=momentum, weight_decay=weight_decay)    
         print(model)
 
 
@@ -76,11 +76,16 @@ class ModelTrainer:
                 y = y.view(-1, 1)
                 #mean_mae = (torch.sum(abs(pred - y))*100) / len(pred)
                 #print(mean_mae)
-                loss_fn_k = torch.nn.KLDivLoss(reduction='batchmean', log_target=True)
-                pred = torch.nn.functional.log_softmax(pred)
-                y = torch.nn.functional.log_softmax(y)
+                #loss_fn_k = torch.nn.KLDivLoss(reduction='batchmean', log_target=True)
+                loss_fn_k = loss_fn
+                #pred = torch.nn.functional.log_softmax(pred)
+                #y = torch.nn.functional.log_softmax(y)
+
                 loss = loss_fn_k(pred, y)
-                
+                loss_values.append(loss.item())
+                loss.backward()
+                optimizer.step()
+                '''
 
                 mae_batch = torch.mean(torch.abs(pred - y)) * 100
                 y = y.view(-1) * 100
@@ -105,12 +110,10 @@ class ModelTrainer:
                     #print(f"Przedział {low}-{high - 1}: {count.item()} przykładów")
                         #loss += 0.2 * mae_roznica/100
 
-                batch_losses.append(loss.item())    
-                loss.backward()
-                optimizer.step()
+                  '''
 
-            mean_epoch_loss = np.mean(batch_losses)
-            loss_values.append(mean_epoch_loss)
+            #mean_epoch_loss = np.mean(batch_losses)
+            #loss_values.append(mean_epoch_loss)
         
         step = np.linspace(0, 100, 100)
         '''
