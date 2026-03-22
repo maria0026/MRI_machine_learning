@@ -84,6 +84,7 @@ class ModelTester:
         if z is not None:
             y_pred = y_pred - z[0]*y_test[feature].values.ravel()**2 - z[1]*y_test[feature].values.ravel() - z[2]
 
+
         mse=mean_squared_error(y_test[feature], y_pred)
         rmse = float(format(np.sqrt(mean_squared_error(y_test[feature], y_pred)), '.3f'))
         mae = mean_absolute_error(y_test[feature], y_pred)
@@ -146,10 +147,9 @@ class ModelTester:
         y_pred=results_df['Predicted']
 
         if z_quantiles is not None:
-            for quantile, y_pred_quant in z_quantiles.items():
-                plt.plot(y_test[feature], y_pred_quant[0]*y_test[feature]+y_pred_quant[1], label=f"Quantile: {quantile}")
-
             if plot:
+                for quantile, y_pred_quant in z_quantiles.items():
+                    plt.plot(y_test[feature], y_pred_quant[0]*y_test[feature]+y_pred_quant[1], label=f"Quantile: {quantile}")
                 plt.plot(y_test[feature], y_pred, 'o', color='b', alpha=0.5, label='Predicted')
                 plt.xlabel("Actual age")
                 plt.ylabel("Predicted age")
@@ -249,9 +249,9 @@ class ModelTester:
 
         return accuracy, precision, recall, FPR, cf_matrix, fpr, tpr, df_fi
 
-    def neural_network_regression(self, X_test, y_test, batch_size, model, feature):
+    def neural_network_regression(self, X_test, y_test, batch_size, model, feature, z=None):
         test_data = nn_data.Data(X_test, y_test[feature], y_test['identifier'].values)
-        test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
+        test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size)
 
         y_pred = []
         y_test_list = []
@@ -261,13 +261,21 @@ class ModelTester:
             for X, y, ids in test_dataloader:
                 outputs = model(X)
                 #Spłaszczenie
-                predicted = outputs.view(-1).numpy()
-                y = y.view(-1).numpy()
+                #predicted = outputs.view(-1).numpy()
+                predicted = outputs.view(-1).cpu().numpy()
+                y_np = y.view(-1).cpu().numpy()
+                if z is not None:
+                    #predicted = predicted - z[0]*(100*y_np)**2 - z[1]*(100*y_np) - z[2]
+                    predicted = predicted - z[0]*(100*predicted)**2 - z[1]*(100*predicted) - z[2]
+                    #predicted = predicted
+                else: 
+                    predicted*=100
+
 
                 y_pred.append(predicted)
-                y_test_list.append(y)
+                y_test_list.append(y_np)
                 
-        y_pred_flat = np.array([item for sublist in y_pred for item in sublist])*100
+        y_pred_flat = np.array([item for sublist in y_pred for item in sublist])#*100
         y_test_flat = np.array([item for sublist in y_test_list for item in sublist])*100
         #create dataframe from y_pred and y_test
         y_pred_df=pd.DataFrame({'Actual':np.array(y_test_flat),

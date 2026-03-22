@@ -3,6 +3,9 @@ import pandas as pd
 from sklearn.linear_model import QuantileRegressor
 import matplotlib.pyplot as plt
 from sklearn.utils.fixes import parse_version, sp_version
+from utils import nn_data, nn_model
+from torch.utils.data import Dataset, DataLoader
+import torch
 
 def svm_regression_model(X_val, y_val, clf, feature, plot=False):
     X_val = X_val.select_dtypes(include='number')
@@ -54,7 +57,7 @@ def svm_regression_model(X_val, y_val, clf, feature, plot=False):
     for quantile, y_pred in predictions.items():
         #fit function
         z_quantile = np.polyfit(X.ravel(), y_pred, 1)
-        plt.plot(X, z_quantile[0]*X.ravel() + z_quantile[1], label=f"Quantile: {quantile}")
+        #plt.plot(X, z_quantile[0]*X.ravel() + z_quantile[1], label=f"Quantile: {quantile}")
         z_quantiles[quantile]=z_quantile
         #plt.plot(X, y_pred, label=f"Quantile: {quantile}")
     if plot:
@@ -81,3 +84,42 @@ def svm_regression_model(X_val, y_val, clf, feature, plot=False):
         plt.show()
 
     return z, z_quantiles
+
+def feed_forward_neural_network(X_val, y_val, model, batch_size, feature):
+        val_data = nn_data.Data(X_val, y_val[feature], y_val['identifier'].values)
+        test_dataloader = DataLoader(dataset=val_data, batch_size=batch_size)
+
+        y_pred = []
+        y_test_list = []
+
+        model.eval()
+        with torch.no_grad():
+            for X, y, ids in test_dataloader:
+                outputs = model(X)
+                #Spłaszczenie
+                #predicted = outputs.view(-1).numpy()
+                #y = y.view(-1).numpy()
+                predicted = outputs.view(-1).cpu().numpy()
+                y = y.view(-1).cpu().numpy()
+
+                y_pred.append(predicted)
+                y_test_list.append(y)
+                
+        y_pred_flat = np.array([item for sublist in y_pred for item in sublist])*100
+        y_test_flat = np.array([item for sublist in y_test_list for item in sublist])*100
+
+        
+        #unique_actual, indices = np.unique(y_test_flat, return_index=True)
+        unique_actual = np.unique(y_test_flat)
+
+        #mean_predicted = [np.mean([y_pred_flat[j] for j in range(len(y_test_flat)) if y_test_flat[j] == ua]) for ua in unique_actual]
+        mean_predicted = [
+            np.mean(y_pred_flat[np.isclose(y_test_flat, ua)])
+            for ua in unique_actual
+        ]
+        mean_predicted_gap = [mean_predicted[i]- unique_actual[i] for i in range(len(unique_actual))]
+        # Dopasowanie wielomianu do unikalnych danych
+        z = np.polyfit(unique_actual, mean_predicted_gap, 2)
+        print("Wielomian dopasowania", z[0], z[1], z[2])
+      
+        return z
