@@ -30,6 +30,7 @@ def main(args):
         os.makedirs(model_path)
     
     df = pd.read_csv(f'data/{args.data_type}_norm_confirmed/all_concatenated.csv', sep=None, engine='python')
+    df.columns = df.columns.str.replace('-', '_')
     print(df)
     df = df[(df['age'] <= 100) & (df['age'] >= 0.5)]
 
