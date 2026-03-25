@@ -45,6 +45,13 @@ class DimensionsReductor:
             val_pca = pca_mri.transform(X_val)
 
         print("Train pca: ", train_pca.shape)
+        #PC_values = np.arange(pca_mri.n_components_) + 1
+        #plt.plot(PC_values, pca_mri.explained_variance_ratio_, 'o-', linewidth=2, color='blue')
+        #plt.title('Scree Plot')
+        #plt.xlabel('Principal Component')
+        #plt.ylabel('Variance Explained')
+        #plt.show()
+
         
         explained_variance_ratio=pca_mri.explained_variance_ratio_
         formatted_explained_variance = [f"{num:.10f}" for num in explained_variance_ratio]
