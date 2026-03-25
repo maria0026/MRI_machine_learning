@@ -26,8 +26,8 @@ class NeuralNetwork(nn.Module):
         x = torch.nn.functional.leaky_relu(self.layer_2(x))
         x = self.dropout_2(x)
         x = torch.nn.functional.leaky_relu(self.layer_3(x))
-        #x = torch.nn.functional.sigmoid(self.output_layer(x))
-        x = torch.nn.functional.leaky_relu(self.output_layer(x))
+        x = torch.nn.functional.sigmoid(self.output_layer(x))
+        #x = torch.nn.functional.leaky_relu(self.output_layer(x))
 
 
         return x
