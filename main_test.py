@@ -17,10 +17,14 @@ def main(args):
     results_directory=f'{args.results_directory}'
 
     if 'big' in args.data_type:
-        df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/leave_out_big.csv', sep='\t')
+        df = pd.read_csv(f'data/{args.data_type}_norm_confirmed/leave_out_big.csv', sep='\t')
     else:
-        df = pd.read_csv(f'data/{args.data_type}_norm_confirmed_normal/leave_out.csv', sep='\t')
+        df = pd.read_csv(f'data/{args.data_type}_norm_confirmed/leave_out.csv', sep='\t')
     identifier=df['identifier']
+    df=pd.read_csv(f'data/do_sluchu/mri_audiometry_znaczny_MF.csv', sep=None, engine='python')
+    df.columns = df.columns.str.replace('-', '_')
+    print(df)
+    
     df = df.drop(columns=args.columns_to_drop, errors='ignore')
     input_dim = args.components_nr + 1
 
@@ -30,8 +34,10 @@ def main(args):
     for i in range(0, args.nr_of_train):
         X_test=df.drop(columns=args.label_names)
         y_test=df[args.label_names]
+        print(X_test)
         X_test_to_scale = X_test.drop(columns=args.column_to_copy)
         scaler = joblib.load(f'{model_path}/scaler_train_nr_{i}.pkl')
+        X_test_to_scale = X_test_to_scale[scaler.feature_names_in_]
         X_test_to_scale = X_test_to_scale.fillna(0)
 
         X_test_scaled = scaler.transform(X_test_to_scale)
@@ -125,7 +131,7 @@ if __name__ == "__main__":
     parser.add_argument("--valid", nargs="?", default=0, help="create valid set: 0/1", type=bool)
     parser.add_argument("--components_nr", nargs="?", default=35, help="Number of components for principal component analysis", type=int)
     parser.add_argument("--columns_to_drop", nargs="?", default=['identifier','norm_confirmed', 'sex', 'female', 'weight', 'hight'], help="Columns to drop", type=list)
-    parser.add_argument("--division_by_total_volume", nargs="?", default=1, help="Divide volumetric data by Estimated_Total_Intracranial_Volume: 1/0", type=bool)
+    parser.add_argument("--division_by_total_volume", nargs="?", default=0, help="Divide volumetric data by Estimated_Total_Intracranial_Volume: 1/0", type=bool)
     parser.add_argument("--label_names", nargs="?", default=["age"], help="Predicted parameters, list", type=list)
     parser.add_argument("--column_to_copy", nargs="?", default=['male'], help="Columns to copy", type=list)
     parser.add_argument("--batch_size", nargs="?", default=64, help="Batch size", type=int)
